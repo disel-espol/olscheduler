@@ -1,7 +1,11 @@
 cd ${0%/*}
+mkdir ../tmp
+
 CLUSTER_NAME=../tmp/c0
 NUM_WORKERS=5
-ADMIN=../bin/admin
+OPENLAMBDA=../../open-lambda
+ADMIN=$OPENLAMBDA/bin/admin
+HANDLERS=$OPENLAMBDA/quickstart/handlers
 
 echo "---> REMOVING CLUSTER: "$CLUSTER_NAME
 $ADMIN kill -cluster=$CLUSTER_NAME
@@ -13,7 +17,7 @@ echo "---> NEW CLUSTER: "$CLUSTER_NAME
 $ADMIN new -cluster=$CLUSTER_NAME
 $ADMIN workers -n=$NUM_WORKERS -cluster=$CLUSTER_NAME
 $ADMIN status -cluster=$CLUSTER_NAME
-cp -r ./quickstart/handlers/hello $CLUSTER_NAME/registry/hello
+cp -r $HANDLERS/hello $CLUSTER_NAME/registry/hello
 echo 
 echo
 echo
@@ -22,10 +26,7 @@ curl -w "\n" -X GET localhost:8080/lambda/hello?cmd=load
 curl -w "\n" -X GET localhost:8080/lambda/hello?cmd=scheme
 curl -w "\n" -X POST localhost:8080/runLambda/hello -d '{"name": "moon"}'
 
-# curl -w "\n" -X GET localhost:9080
-# curl -w "\n" -X GET localhost:9080/scheduler
-# curl -w "\n" -X GET localhost:9080/status
-
+curl -w "\n" -X GET localhost:9080/status
 curl -w "\n" -X POST localhost:9080/runLambda/hello -d '{"pkgs": ["fmt", "rand"], "name": "Moon"}'
 # curl -w "\n" -X POST localhost:9080/runLambda/hello -d '{"pkgs": ["fmt", "rand"]}'
 # curl -w "\n" -X POST localhost:9080/runLambda/hello1 -d '{"pkgs": ["strings","errors", "fmt"]}'
