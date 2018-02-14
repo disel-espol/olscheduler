@@ -22,7 +22,7 @@ echo
 echo
 echo
 echo "---> TEST WORKER"
-curl -X POST localhost:8080/runLambda/hello -d '{"name": "moon"}'
+curl -w "/n" -X POST localhost:8080/runLambda/hello -d '{"name": "moon"}'
 echo 
 echo
 echo
@@ -33,5 +33,5 @@ echo
 echo
 sleep 1s
 echo "---> TEST BALANCER"
-curl -X POST localhost:9080/runLambda/hello -d '{"name": "Moon"}'
+curl -w "/n" -X POST localhost:9080/runLambda/hello -d '{"name": "Moon"}'
 echo
