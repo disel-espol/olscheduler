@@ -3,7 +3,7 @@ mkdir ../tmp
 
 CLUSTER_NAME=../tmp/c0
 NUM_WORKERS=5
-OPENLAMBDA=../../open-lambda
+OPENLAMBDA=../../open-lambda # Looks for open-lambda at same directory level as olscheduler repo
 ADMIN=$OPENLAMBDA/bin/admin
 HANDLERS=$OPENLAMBDA/quickstart/handlers
 
