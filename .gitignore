@@ -5,6 +5,7 @@
 *.dylib
 bin/
 hack/
+tmp/
 
 # Test binary, build with `go test -c`
 *.test
@@ -14,3 +15,6 @@ hack/
 
 # Project-local glide cache, RE: https://github.com/Masterminds/glide/issues/736
 .glide/
+
+# IDE or Editor
+.vscode/
