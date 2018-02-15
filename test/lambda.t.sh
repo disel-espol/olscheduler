@@ -30,10 +30,11 @@ echo
 echo
 echo
 echo "---> START OLSCHEDULER"
-$ADMIN olscheduler -cluster=$CLUSTER_NAME -lt=3
+$ADMIN olscheduler -cluster=$CLUSTER_NAME -b=pkg-aware -lt=3
 echo 
 echo
 echo
+sleep 1s
 echo "---> TEST OLSCHEDULER"
 curl -w "\n" -X GET localhost:9080/status
 curl -w "\n" -X POST localhost:9080/runLambda/hello -d '{"pkgs": ["fmt", "rand"], "name": "Moon"}'
