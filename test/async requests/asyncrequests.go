@@ -34,7 +34,7 @@ func main() {
 		go MakeRequest(url, ch)
 	}
 
-	for range requests {
+	for range requests { // Awaiting all responses
 		fmt.Println(<-ch)
 	}
 	fmt.Printf("%.2fs elapsed\n", time.Since(start).Seconds())
