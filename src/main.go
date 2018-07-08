@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"math/rand"
 	"net/http"
@@ -13,6 +12,7 @@ import (
 	"time"
 
 	"./balancer"
+	"./httpreq"
 	"./schutil"
 	"github.com/urfave/cli"
 )
@@ -46,49 +46,63 @@ func stripPkgsArrayFromBody(strBody string) ([]string, string, *schutil.HttpErro
 	return pkgs, newStrBody, nil
 }
 
-func DoRunLambda(w http.ResponseWriter, r *http.Request) (*schutil.Worker, *schutil.HttpError) {
-	body, _ := ioutil.ReadAll(r.Body)
-	strBody := string(body)
+// If we could make a "Balancer" interface and have all algorithms receive the
+// same parameter list we could completely delete this function
+func selectWorkerUsingConfiguredBalancer(pkgs []string) (*schutil.Worker, *schutil.HttpError) {
+	var worker *schutil.Worker
+	var err error
+	switch config.Balancer {
+	case supportedBalancers[0]:
+		worker, err = balancer.SelectWorkerRandom(workers)
+	case supportedBalancers[1]:
+		worker, err = balancer.SelectWorkerPkgAware(workers, pkgs, config.LoadThreshold)
+	case supportedBalancers[2]:
+		worker, err = balancer.SelectWorkerRoundRobin(workers)
+	case supportedBalancers[3]:
+		worker, err = balancer.SelectWorkerLeastLoaded(workers)
+	default:
+		errorMsg := fmt.Sprintf("balancer: (%s) not supported. You could use one from %s",
+			config.Balancer, supportedBalancers)
+		return nil, &schutil.HttpError{errorMsg, http.StatusInternalServerError}
+	}
+
+	if err != nil {
+		return nil, &schutil.HttpError{err.Error(), http.StatusInternalServerError}
+	}
+
+	return worker, nil
+}
+
+func logSelectedWorker(worker *schutil.Worker) {
+	for i, _ := range workers {
+		log.Printf("--> worker: %s with load: %d", workers[i].URL.String(), workers[i].GetLoad())
+	}
+	log.Printf("Selected Worker with URL: %s, balancer: %s, load-threshold: %d",
+		worker.URL.String(),
+		config.Balancer,
+		config.LoadThreshold)
+}
+
+func DoRunLambda(w http.ResponseWriter, r *http.Request) *schutil.HttpError {
+	strBody := httpreq.GetBodyAsString(r)
 	pkgs, newStrBody, err := stripPkgsArrayFromBody(strBody)
 
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	// Modify request's body
-	r.Body = ioutil.NopCloser(strings.NewReader(newStrBody))
-	r.ContentLength = int64(len(newStrBody))
+	httpreq.ReplaceBodyWithString(r, newStrBody)
 
 	{ // Select worker and serve http
 		var worker *schutil.Worker
-		var err error
-		switch config.Balancer {
-		case supportedBalancers[0]:
-			worker, err = balancer.SelectWorkerRandom(workers)
-		case supportedBalancers[1]:
-			worker, err = balancer.SelectWorkerPkgAware(workers, pkgs, config.LoadThreshold)
-		case supportedBalancers[2]:
-			worker, err = balancer.SelectWorkerRoundRobin(workers)
-		case supportedBalancers[3]:
-			worker, err = balancer.SelectWorkerLeastLoaded(workers)
-		default:
-			errorMsg := fmt.Sprintf("balancer: (%s) not supported. You could use one from %s", config.Balancer, supportedBalancers)
-			return nil, &schutil.HttpError{errorMsg, http.StatusInternalServerError}
+		worker, err = selectWorkerUsingConfiguredBalancer(pkgs)
+		if err != nil {
+			return err
 		}
 
-		if err != nil {
-			return nil, &schutil.HttpError{err.Error(), http.StatusInternalServerError}
-		}
-		for i, _ := range workers {
-			log.Printf("--> worker: %s with load: %d", workers[i].URL.String(), workers[i].Load)
-		}
-		log.Printf("Selected Worker with URL: %s, balancer: %s, load-threshold: %d",
-			worker.URL.String(),
-			config.Balancer,
-			config.LoadThreshold)
-		worker.Load++
-		worker.ReverseProxy.ServeHTTP(w, r)
-		return worker, nil
+		logSelectedWorker(worker)
+		worker.SendWorkload(w, r)
+		return nil
 	}
 }
 
@@ -99,15 +113,13 @@ func RunLambdaHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Receive request to %s\n", r.URL.Path)
 
 	observer := schutil.NewObserverResponseWriter(w)
-	worker, err := DoRunLambda(observer, r)
+	err := DoRunLambda(observer, r)
 	if err != nil {
 		log.Printf("Could not handle request: %s\n", err.Msg)
 		http.Error(w, err.Msg, err.Code)
 		return
 	}
-	worker.Load--
 	log.Printf("Response Status: %d", observer.Status)
-	// log.Printf("Response: %s", string(observer.Body))
 }
 
 func StatusHandler(w http.ResponseWriter, r *http.Request) {
