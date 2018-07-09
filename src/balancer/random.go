@@ -29,13 +29,13 @@ func SelectWorkerRandom(workers []schutil.Worker) (*schutil.Worker, error) {
 			continue
 		}
 		accumWeight += workers[i].Weight
-		if (accumWeight >= targetAccumWeight) {
+		if accumWeight >= targetAccumWeight {
 			targetIndex = i
-			break;
+			break
 		}
 	}
-	
-	if (targetIndex < 0) {
+
+	if targetIndex < 0 {
 		return nil, errors.New("Can't select worker, All weights are zero")
 	}
 

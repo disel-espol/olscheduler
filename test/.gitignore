@@ -1,0 +1,7 @@
+node_modules/
+yarn-error.log
+
+# I wont add any lockfiles because I don't want to be tied to a specific 
+# package manager. Our dependencies are small so, any package manager
+# should be good enough.
+yarn.lock

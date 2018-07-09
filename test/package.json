@@ -1,0 +1,14 @@
+{
+  "name": "test",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "private": true,
+  "devDependencies": {
+    "jest": "^23.3.0",
+    "superagent": "^3.8.3"
+  },
+  "scripts": {
+    "test": "jest"
+  }
+}

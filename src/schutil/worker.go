@@ -1,13 +1,13 @@
 package schutil
 
 import (
-	"net/url"
 	"net/http/httputil"
+	"net/url"
 )
 
 type Worker struct {
-	URL *url.URL
+	URL          *url.URL
 	ReverseProxy *httputil.ReverseProxy
-	Load int
-	Weight int
+	Load         int
+	Weight       int
 }

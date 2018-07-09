@@ -5,14 +5,14 @@ import (
 )
 
 type HttpError struct {
-	Msg string
+	Msg  string
 	Code int
 }
 
 type AppendResponseWriter struct {
-	headers http.Header
-	Body []byte
-	Status int
+	headers   http.Header
+	Body      []byte
+	Status    int
 	separator []byte
 }
 
@@ -25,7 +25,7 @@ func (this *AppendResponseWriter) Header() http.Header {
 }
 
 func (this *AppendResponseWriter) Write(body []byte) (int, error) {
-	if (len(this.Body) > 0) {
+	if len(this.Body) > 0 {
 		this.Body = append(this.Body, this.separator...)
 	}
 	this.Body = append(this.Body, body...)
@@ -37,7 +37,7 @@ func (this *AppendResponseWriter) WriteHeader(status int) {
 }
 
 type ObserverResponseWriter struct {
-	Body []byte
+	Body   []byte
 	Status int
 
 	rw http.ResponseWriter
