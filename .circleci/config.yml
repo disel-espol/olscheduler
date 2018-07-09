@@ -29,11 +29,15 @@ jobs:
           command: chmod u+x ./build.sh && ./build.sh
       - run:
           name: gofmt
-          command: diff -u <(echo -n) <(gofmt -d ./)
+          command: diff -u <(echo -n) <(gofmt -d ./src)
       - run:
-          name: install node
-          command: curl -sL https://deb.nodesource.com/setup_8.9.3 | sudo -E bash - && sudo apt-get install -y nodejs
-
+          name: install node 
+          command: |
+            curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash - 
+            sudo apt-get install -y nodejs
       - run: 
           name: integration tests
-          command: cd test && npm test 
+          command: | 
+            cd test 
+            npm install 
+            npm test 

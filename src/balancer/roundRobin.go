@@ -13,9 +13,9 @@ func SelectWorkerRoundRobin(workers []schutil.Worker) (*schutil.Worker, error) {
 	}
 
 	currentIndex := nextIndex
-	
+
 	nextIndex++
-	if (nextIndex >= len(workers)) {
+	if nextIndex >= len(workers) {
 		nextIndex = 0
 	}
 
