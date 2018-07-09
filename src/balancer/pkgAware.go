@@ -35,14 +35,14 @@ func SelectWorkerPkgAware(workers []schutil.Worker,
 	targetIndex2 := h2(largestPkg) % uint32(len(workers))
 
 	targetIndex := targetIndex2
-	if workers[targetIndex1].Load < workers[targetIndex2].Load {
+	if workers[targetIndex1].GetLoad() < workers[targetIndex2].GetLoad() {
 		targetIndex = targetIndex1
 	}
 
-	if workers[targetIndex].Load >= threshold { // Find least loaded
+	if workers[targetIndex].GetLoad() >= threshold { // Find least loaded
 		targetIndex = 0
 		for i := 1; i < len(workers); i++ {
-			if workers[i].Load < workers[targetIndex].Load {
+			if workers[i].GetLoad() < workers[targetIndex].GetLoad() {
 				targetIndex = uint32(i)
 			}
 		}

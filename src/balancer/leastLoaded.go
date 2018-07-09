@@ -12,7 +12,7 @@ func SelectWorkerLeastLoaded(workers []schutil.Worker) (*schutil.Worker, error) 
 
 	targetIndex := 0
 	for i := 1; i < len(workers); i++ {
-		if workers[i].Load < workers[targetIndex].Load {
+		if workers[i].GetLoad() < workers[targetIndex].GetLoad() {
 			targetIndex = i
 		}
 	}
