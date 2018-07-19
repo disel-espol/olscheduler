@@ -15,13 +15,13 @@ type Config struct {
 	Port          int      `json:"port"`
 	Balancer      string   `json:"balancer"`
 	LoadThreshold int      `json:"load-threshold"`
-	Registry	  string   `json:"registry"`
+	Registry      string   `json:"registry"`
 	Workers       []string `json:"workers"`
 }
 
 type Handle struct {
-	Handle string `json:handle`
-	Pkgs []string `json:pkgs`
+	Handle string   `json:handle`
+	Pkgs   []string `json:pkgs`
 }
 
 func LoadConfigFromFile(configFilepath string) Config {
