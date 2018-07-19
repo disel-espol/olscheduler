@@ -20,13 +20,14 @@ import (
 // Global variables
 var workers []schutil.Worker
 var config schutil.Config
+var registry map[string][]string
 var supportedBalancers = []string{"random", "pkg-aware", "round-robin", "least-loaded"} // TODO(Gus): Change to a map[string]func
 
 func stripPkgsArrayFromBody(strBody string) ([]string, string, *schutil.HttpError) {
 	pkgsRegExp := regexp.MustCompile(`"pkgs"\s*:\s*\[.*\],*\s*`)
 	matches := pkgsRegExp.FindStringSubmatch(strBody)
 	if len(matches) < 1 {
-		return nil, "", &schutil.HttpError{"Pkgs array required", http.StatusInternalServerError}
+		return nil, strBody, nil
 	}
 	strPkgsJson := matches[0]
 	pkgsArrayRegExp := regexp.MustCompile(`\[.*\]`)
@@ -83,6 +84,25 @@ func logSelectedWorker(worker *schutil.Worker) {
 		config.LoadThreshold)
 }
 
+// Copied from OpenLamda src
+// getUrlComponents parses request URL into its "/" delimated components
+func getUrlComponents(r *http.Request) []string {
+	path := r.URL.Path
+
+	// trim prefix
+	if strings.HasPrefix(path, "/") {
+		path = path[1:]
+	}
+
+	// trim trailing "/"
+	if strings.HasSuffix(path, "/") {
+		path = path[:len(path)-1]
+	}
+
+	components := strings.Split(path, "/")
+	return components
+}
+
 func DoRunLambda(w http.ResponseWriter, r *http.Request) *schutil.HttpError {
 	strBody := httpreq.GetBodyAsString(r)
 	pkgs, newStrBody, err := stripPkgsArrayFromBody(strBody)
@@ -92,6 +112,25 @@ func DoRunLambda(w http.ResponseWriter, r *http.Request) *schutil.HttpError {
 	}
 
 	httpreq.ReplaceBodyWithString(r, newStrBody)
+
+	if pkgs == nil { // Try to load from registry
+		lambdaName := ""
+		{ // Copied from OpenLamda src
+			urlParts := getUrlComponents(r)
+			if len(urlParts) < 2 {
+				return &schutil.HttpError{"Name of image to run required", http.StatusBadRequest}
+			}
+			img := urlParts[1]
+			i := strings.Index(img, "?")
+			if i >= 0 {
+				img = img[:i-1]
+			}
+			lambdaName = img
+		}
+		// fmt.Println(lambdaName)
+		pkgs = registry[lambdaName]
+		// fmt.Println(pkgs)
+	}
 
 	{ // Select worker and serve http
 		var worker *schutil.Worker
@@ -134,6 +173,7 @@ func StartServer(ctx *cli.Context) {
 	configFilepath := ctx.String("config")
 	config = schutil.LoadConfigFromFile(configFilepath)
 	workers = schutil.CreateWorkersArray(configFilepath, config)
+	registry = schutil.CreateRegistryFromFile(config.Registry)
 
 	http.HandleFunc("/runLambda/", RunLambdaHandler)
 	http.HandleFunc("/status", StatusHandler)

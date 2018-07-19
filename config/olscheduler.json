@@ -3,6 +3,7 @@
     "port": 9080,
     "balancer": "pkg-aware",
     "load-threshold": 3,
+    "registry": "/home/ubuntu/registry.json",
     "workers": [
         "localhost:8080", "1",
         "localhost:8081", "1",
