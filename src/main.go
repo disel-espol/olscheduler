@@ -143,7 +143,7 @@ func RunLambdaPlusHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func DoRunLambda(w http.ResponseWriter, r *http.Request) *schutil.HttpError {
-	var pkgs string[]
+	var pkgs []string
 
 	{ // Try to load from registry
 		lambdaName := ""
