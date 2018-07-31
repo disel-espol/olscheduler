@@ -27,7 +27,7 @@ func stripPkgsArrayFromBody(strBody string) ([]string, string, *schutil.HttpErro
 	pkgsRegExp := regexp.MustCompile(`"pkgs"\s*:\s*\[.*\],*\s*`)
 	matches := pkgsRegExp.FindStringSubmatch(strBody)
 	if len(matches) < 1 {
-		return nil, strBody, nil
+		return nil, "", &schutil.HttpError{"Pkgs array required", http.StatusInternalServerError}
 	}
 	strPkgsJson := matches[0]
 	pkgsArrayRegExp := regexp.MustCompile(`\[.*\]`)
@@ -103,7 +103,7 @@ func getUrlComponents(r *http.Request) []string {
 	return components
 }
 
-func DoRunLambda(w http.ResponseWriter, r *http.Request) *schutil.HttpError {
+func DoRunLambdaPlus(w http.ResponseWriter, r *http.Request) *schutil.HttpError {
 	strBody := httpreq.GetBodyAsString(r)
 	pkgs, newStrBody, err := stripPkgsArrayFromBody(strBody)
 
@@ -113,7 +113,39 @@ func DoRunLambda(w http.ResponseWriter, r *http.Request) *schutil.HttpError {
 
 	httpreq.ReplaceBodyWithString(r, newStrBody)
 
-	if pkgs == nil { // Try to load from registry
+	{ // Select worker and serve http
+		var worker *schutil.Worker
+		worker, err = selectWorkerUsingConfiguredBalancer(pkgs)
+		if err != nil {
+			return err
+		}
+
+		logSelectedWorker(worker)
+		worker.SendWorkload(w, r)
+		return nil
+	}
+}
+
+// RunLambda expects POST requests like this:
+//
+// curl -X POST localhost:9080/runLambda/<lambda-name> -d '{"pkgs": ["pkg0", "pkg1"], "param0": "value0"}'
+func RunLambdaPlusHandler(w http.ResponseWriter, r *http.Request) {
+	log.Printf("Receive request to %s\n", r.URL.Path)
+
+	observer := schutil.NewObserverResponseWriter(w)
+	err := DoRunLambdaPlus(observer, r)
+	if err != nil {
+		log.Printf("Could not handle request: %s\n", err.Msg)
+		http.Error(w, err.Msg, err.Code)
+		return
+	}
+	log.Printf("Response Status: %d", observer.Status)
+}
+
+func DoRunLambda(w http.ResponseWriter, r *http.Request) *schutil.HttpError {
+	var pkgs string[]
+
+	{ // Try to load from registry
 		lambdaName := ""
 		{ // Copied from OpenLamda src
 			urlParts := getUrlComponents(r)
@@ -128,7 +160,10 @@ func DoRunLambda(w http.ResponseWriter, r *http.Request) *schutil.HttpError {
 			lambdaName = img
 		}
 		// fmt.Println(lambdaName)
-		pkgs = registry[lambdaName]
+		pkgs, found = registry[lambdaName]
+		if !found {
+			return &schutil.HttpError{fmt.Sprintf("No pkgs found in registry: %v for lambda name: %v", config.Registry, lambdaName), http.StatusBadRequest}
+		}
 		// fmt.Println(pkgs)
 	}
 
@@ -147,7 +182,7 @@ func DoRunLambda(w http.ResponseWriter, r *http.Request) *schutil.HttpError {
 
 // RunLambda expects POST requests like this:
 //
-// curl -X POST localhost:9080/runLambda/<lambda-name> -d '{"pkgs": ["pkg0", "pkg1"], "param0": "value0"}'
+// curl -X POST localhost:9080/runLambda/<lambda-name> -d '{"param0": "value0"}'
 func RunLambdaHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Receive request to %s\n", r.URL.Path)
 
@@ -175,6 +210,7 @@ func StartServer(ctx *cli.Context) {
 	workers = schutil.CreateWorkersArray(configFilepath, config)
 	registry = schutil.CreateRegistryFromFile(config.Registry)
 
+	http.HandleFunc("/runLambdaPlus/", RunLambdaPlusHandler)
 	http.HandleFunc("/runLambda/", RunLambdaHandler)
 	http.HandleFunc("/status", StatusHandler)
 	log.Print("Scheduler is running")
