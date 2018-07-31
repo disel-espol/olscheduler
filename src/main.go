@@ -144,7 +144,7 @@ func RunLambdaPlusHandler(w http.ResponseWriter, r *http.Request) {
 
 func DoRunLambda(w http.ResponseWriter, r *http.Request) *schutil.HttpError {
 	var pkgs []string
-
+	var found bool
 	{ // Try to load from registry
 		lambdaName := ""
 		{ // Copied from OpenLamda src
@@ -168,8 +168,7 @@ func DoRunLambda(w http.ResponseWriter, r *http.Request) *schutil.HttpError {
 	}
 
 	{ // Select worker and serve http
-		var worker *schutil.Worker
-		worker, err = selectWorkerUsingConfiguredBalancer(pkgs)
+		worker, err := selectWorkerUsingConfiguredBalancer(pkgs)
 		if err != nil {
 			return err
 		}
