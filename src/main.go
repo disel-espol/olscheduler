@@ -104,6 +104,11 @@ func getUrlComponents(r *http.Request) []string {
 }
 
 func DoRunLambdaPlus(w http.ResponseWriter, r *http.Request) *schutil.HttpError {
+	{ // Change request's url
+		newPath := r.URL.Path
+		newPath = strings.Replace(newPath, "runLambdaPlus", "runLambda", 1)
+		r.URL.Path = newPath
+	}
 	strBody := httpreq.GetBodyAsString(r)
 	pkgs, newStrBody, err := stripPkgsArrayFromBody(strBody)
 
@@ -128,7 +133,7 @@ func DoRunLambdaPlus(w http.ResponseWriter, r *http.Request) *schutil.HttpError 
 
 // RunLambda expects POST requests like this:
 //
-// curl -X POST localhost:9080/runLambda/<lambda-name> -d '{"pkgs": ["pkg0", "pkg1"], "param0": "value0"}'
+// curl -X POST localhost:9080/runLambdaPlus/<lambda-name> -d '{"pkgs": ["pkg0", "pkg1"], "param0": "value0"}'
 func RunLambdaPlusHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Receive request to %s\n", r.URL.Path)
 
