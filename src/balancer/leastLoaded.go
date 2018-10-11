@@ -3,9 +3,13 @@ package balancer
 import (
 	"../schutil"
 	"errors"
+	"net/http"
 )
 
-func SelectWorkerLeastLoaded(workers []schutil.Worker) (*schutil.Worker, error) {
+type LeastLoadedBalancer struct {
+}
+
+func (b *LeastLoadedBalancer) SelectWorker(workers []schutil.Worker, r http.Request) {
 	if len(workers) == 0 {
 		return nil, errors.New("Can't select worker, Workers empty")
 	}

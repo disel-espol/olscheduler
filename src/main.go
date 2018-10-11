@@ -21,58 +21,7 @@ import (
 var workers []schutil.Worker
 var config schutil.Config
 var registry map[string][]string
-var supportedBalancers = []string{"random", "pkg-aware", "round-robin", "least-loaded"} // TODO(Gus): Change to a map[string]func
-
-func stripPkgsArrayFromBody(strBody string) ([]string, string, *schutil.HttpError) {
-	pkgsRegExp := regexp.MustCompile(`"pkgs"\s*:\s*\[.*\],*\s*`)
-	matches := pkgsRegExp.FindStringSubmatch(strBody)
-	if len(matches) < 1 {
-		return nil, "", &schutil.HttpError{"Pkgs array required", http.StatusInternalServerError}
-	}
-	strPkgsJson := matches[0]
-	pkgsArrayRegExp := regexp.MustCompile(`\[.*\]`)
-	srtPkgsMatches := pkgsArrayRegExp.FindStringSubmatch(strPkgsJson)
-	if len(srtPkgsMatches) < 1 {
-		return nil, "", &schutil.HttpError{"Pkgs array ill-formed", http.StatusInternalServerError}
-	}
-	decoder := json.NewDecoder(strings.NewReader(srtPkgsMatches[0]))
-	var pkgs []string // pkgs ordered from larger to smaller
-	err := decoder.Decode(&pkgs)
-	if err != nil {
-		return nil, "", &schutil.HttpError{err.Error(), http.StatusInternalServerError}
-	}
-
-	newStrBody := strings.Replace(strBody, strPkgsJson, "", -1)
-
-	return pkgs, newStrBody, nil
-}
-
-// If we could make a "Balancer" interface and have all algorithms receive the
-// same parameter list we could completely delete this function
-func selectWorkerUsingConfiguredBalancer(pkgs []string) (*schutil.Worker, *schutil.HttpError) {
-	var worker *schutil.Worker
-	var err error
-	switch config.Balancer {
-	case supportedBalancers[0]:
-		worker, err = balancer.SelectWorkerRandom(workers)
-	case supportedBalancers[1]:
-		worker, err = balancer.SelectWorkerPkgAware(workers, pkgs, config.LoadThreshold)
-	case supportedBalancers[2]:
-		worker, err = balancer.SelectWorkerRoundRobin(workers)
-	case supportedBalancers[3]:
-		worker, err = balancer.SelectWorkerLeastLoaded(workers)
-	default:
-		errorMsg := fmt.Sprintf("balancer: (%s) not supported. You could use one from %s",
-			config.Balancer, supportedBalancers)
-		return nil, &schutil.HttpError{errorMsg, http.StatusInternalServerError}
-	}
-
-	if err != nil {
-		return nil, &schutil.HttpError{err.Error(), http.StatusInternalServerError}
-	}
-
-	return worker, nil
-}
+var balancer balancer.Balancer
 
 func logSelectedWorker(worker *schutil.Worker) {
 	for i, _ := range workers {
@@ -147,7 +96,7 @@ func RunLambdaPlusHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Response Status: %d", observer.Status)
 }
 
-func DoRunLambda(w http.ResponseWriter, r *http.Request) *schutil.HttpError {
+func DoRunLambda(w http.ResponseWriter, r *http.Request) {
 	var pkgs []string
 	var found bool
 	{ // Try to load from registry
@@ -173,14 +122,13 @@ func DoRunLambda(w http.ResponseWriter, r *http.Request) *schutil.HttpError {
 	}
 
 	{ // Select worker and serve http
-		worker, err := selectWorkerUsingConfiguredBalancer(pkgs)
+		worker, err := myBalancer.SelectWorker(workers, r)
 		if err != nil {
-			return err
+			respondWithError(w, err)
 		}
 
 		logSelectedWorker(worker)
 		worker.SendWorkload(w, r)
-		return nil
 	}
 }
 
@@ -211,6 +159,7 @@ func StatusHandler(w http.ResponseWriter, r *http.Request) {
 func StartServer(ctx *cli.Context) {
 	configFilepath := ctx.String("config")
 	config = schutil.LoadConfigFromFile(configFilepath)
+	balancer = balancer.CreateBalancerFromConfig(config)
 	workers = schutil.CreateWorkersArray(configFilepath, config)
 	registry = schutil.CreateRegistryFromFile(config.Registry)
 
@@ -248,8 +197,6 @@ func createCliApp() *cli.App {
 }
 
 func main() {
-	rand.Seed(time.Now().Unix()) // For rand future calls
-
 	app := createCliApp()
 	app.Run(os.Args)
 }

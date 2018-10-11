@@ -7,8 +7,11 @@ import (
 )
 
 // Select a random worker
-// rand.Seed(time.Now().Unix()) has already been called
-func SelectWorkerRandom(workers []schutil.Worker) (*schutil.Worker, error) {
+// assumes that rand.Seed(time.Now().Unix()) has already been called
+type RandomBalancer struct {
+}
+
+func (b *RandomBalancer) SelectWorker(workers []schutil.Worker, r http.Request) {
 	if len(workers) == 0 {
 		return nil, errors.New("Can't select worker, Workers empty")
 	}
@@ -16,7 +19,7 @@ func SelectWorkerRandom(workers []schutil.Worker) (*schutil.Worker, error) {
 	totalWeight := 0
 	for i, _ := range workers {
 		if workers[i].Weight < 0 {
-			panic("Worker's Weight cannot be negative")
+			return nil, errors.New("Worker's Weight cannot be negative")
 		}
 		totalWeight += workers[i].Weight
 	}
