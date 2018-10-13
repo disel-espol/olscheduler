@@ -1,34 +1,30 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
-	"math/rand"
 	"net/http"
 	"os"
-	"regexp"
-	"strings"
-	"time"
 
 	"./balancer"
-	"./httpreq"
 	"./schutil"
+	"./worker"
+
 	"github.com/urfave/cli"
 )
 
 // Global variables
-var workers []schutil.Worker
+var workers []*worker.Worker
 var config schutil.Config
 var registry map[string][]string
-var balancer balancer.Balancer
+var myBalancer balancer.Balancer
 
-func logSelectedWorker(worker *schutil.Worker) {
+func logSelectedWorker(selectedWorker *worker.Worker) {
 	for i, _ := range workers {
-		log.Printf("--> worker: %s with load: %d", workers[i].URL.String(), workers[i].GetLoad())
+		log.Printf("--> worker: %s with load: %d", workers[i].GetURL(), workers[i].GetLoad())
 	}
 	log.Printf("Selected Worker with URL: %s, balancer: %s, load-threshold: %d",
-		worker.URL.String(),
+		selectedWorker.GetURL(),
 		config.Balancer,
 		config.LoadThreshold)
 }
@@ -64,20 +60,25 @@ func DoRunLambdaPlus(w http.ResponseWriter, r *http.Request) *schutil.HttpError 
 	if err != nil {
 		return err
 	}
+}
 
-	httpreq.ReplaceBodyWithString(r, newStrBody)
+func respondWithError(w http.ResponseWriter, err *schutil.HttpError) {
+	log.Printf("Could not handle request: %s\n", err.Msg)
+	http.Error(w, err.Msg, err.Code)
+	return
+}
 
-	{ // Select worker and serve http
-		var worker *schutil.Worker
-		worker, err = selectWorkerUsingConfiguredBalancer(pkgs)
-		if err != nil {
-			return err
-		}
+func DoRunLambda(w http.ResponseWriter, r *http.Request) {
 
-		logSelectedWorker(worker)
-		worker.SendWorkload(w, r)
-		return nil
+	// Select worker and serve http
+	selectedWorker, err := myBalancer.SelectWorker(workers, r)
+
+	if err != nil {
+		respondWithError(w, err)
 	}
+
+	logSelectedWorker(selectedWorker)
+	selectedWorker.SendWorkload(w, r)
 }
 
 // RunLambda expects POST requests like this:
@@ -139,19 +140,15 @@ func RunLambdaHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Receive request to %s\n", r.URL.Path)
 
 	observer := schutil.NewObserverResponseWriter(w)
-	err := DoRunLambda(observer, r)
-	if err != nil {
-		log.Printf("Could not handle request: %s\n", err.Msg)
-		http.Error(w, err.Msg, err.Code)
-		return
-	}
+	DoRunLambda(observer, r)
+
 	log.Printf("Response Status: %d", observer.Status)
 }
 
 func StatusHandler(w http.ResponseWriter, r *http.Request) {
 	appendResponseWriter := schutil.NewAppendResponseWriter()
 	for i, _ := range workers {
-		workers[i].ReverseProxy.ServeHTTP(appendResponseWriter, r)
+		workers[i].SendWorkload(appendResponseWriter, r)
 	}
 	fmt.Fprint(w, string(appendResponseWriter.Body))
 }
@@ -159,7 +156,7 @@ func StatusHandler(w http.ResponseWriter, r *http.Request) {
 func StartServer(ctx *cli.Context) {
 	configFilepath := ctx.String("config")
 	config = schutil.LoadConfigFromFile(configFilepath)
-	balancer = balancer.CreateBalancerFromConfig(config)
+	myBalancer = balancer.CreateBalancerFromConfig(config)
 	workers = schutil.CreateWorkersArray(configFilepath, config)
 	registry = schutil.CreateRegistryFromFile(config.Registry)
 

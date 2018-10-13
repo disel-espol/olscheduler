@@ -1,13 +1,17 @@
 package balancer
 
-import "math/rand"
+import (
+	"../schutil"
+	"math/rand"
+	"time"
+)
 
-func CreateBalancerFromConfig(config Config) Balancer {
+func CreateBalancerFromConfig(config schutil.Config) Balancer {
 	switch config.Balancer {
 	case "least-loaded":
 		return new(LeastLoadedBalancer)
 	case "pkg-aware":
-		return new(PkgAwareBalancer)
+		return &PkgAwareBalancer{config.LoadThreshold}
 	case "random":
 		rand.Seed(time.Now().Unix()) // For rand future calls
 		return new(RandomBalancer)

@@ -60,3 +60,11 @@ func (this *ObserverResponseWriter) WriteHeader(status int) {
 	this.Status = status
 	this.rw.WriteHeader(status)
 }
+
+func New500Error(msg string) *HttpError {
+	return &HttpError{Code: http.StatusInternalServerError, Msg: msg}
+}
+
+func New400Error(msg string) *HttpError {
+	return &HttpError{Code: http.StatusBadRequest, Msg: msg}
+}

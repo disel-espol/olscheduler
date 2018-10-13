@@ -1,17 +1,18 @@
 package balancer
 
 import (
-	"../schutil"
-	"errors"
 	"net/http"
+
+	"../schutil"
+	"../worker"
 )
 
 type LeastLoadedBalancer struct {
 }
 
-func (b *LeastLoadedBalancer) SelectWorker(workers []schutil.Worker, r http.Request) {
+func (b *LeastLoadedBalancer) SelectWorker(workers []*worker.Worker, r *http.Request) (*worker.Worker, *schutil.HttpError) {
 	if len(workers) == 0 {
-		return nil, errors.New("Can't select worker, Workers empty")
+		return nil, schutil.New500Error("Can't select worker, Workers empty")
 	}
 
 	targetIndex := 0
@@ -21,5 +22,5 @@ func (b *LeastLoadedBalancer) SelectWorker(workers []schutil.Worker, r http.Requ
 		}
 	}
 
-	return &workers[targetIndex], nil
+	return workers[targetIndex], nil
 }

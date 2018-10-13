@@ -1,7 +1,12 @@
 package balancer
 
-import "net/http"
+import (
+	"net/http"
+
+	"../schutil"
+	"../worker"
+)
 
 type Balancer interface {
-	SelectWorker(workers []schutil.Worker, r http.Request) (*schutil.Worker, error)
+	SelectWorker(workers []*worker.Worker, r *http.Request) (*worker.Worker, *schutil.HttpError)
 }
