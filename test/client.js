@@ -1,15 +1,15 @@
 const request = require('superagent')
 
 const createClient = port => {
-  const sendRequest = (overridenAttrs = {}) =>
-    request.post(`localhost:${port}/runLambda/foo`)
+  const sendRequest = ({ name, ...overrideAttrs }) =>
+    request.post(`localhost:${port}/runLambda/${name}`)
       .ok(res => res.status)
-      .send({ pkgs: ['pkg0', 'pkg1'], param0: 'value0', ...overridenAttrs })
+      .send({ param0: 'value0', ...(overrideAttrs || []) })
 
-  const sendRequestsSequentially = async overrideAttrsArray => {
+  const sendRequestsSequentially = async paramsArray => {
       const results = []
-      for (let i = 0; i < overrideAttrsArray.length; i++) {
-        const res = await sendRequest(overrideAttrsArray[i])
+      for (let i = 0; i < paramsArray.length; i++) {
+        const res = await sendRequest(paramsArray[i])
         results.push(res)
       }
       return results

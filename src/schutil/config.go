@@ -15,7 +15,13 @@ type Config struct {
 	Port          int      `json:"port"`
 	Balancer      string   `json:"balancer"`
 	LoadThreshold int      `json:"load-threshold"`
+	Registry      string   `json:"registry"`
 	Workers       []string `json:"workers"`
+}
+
+type Handle struct {
+	Handle string   `json:handle`
+	Pkgs   []string `json:pkgs`
 }
 
 func LoadConfigFromFile(configFilepath string) Config {
@@ -51,4 +57,22 @@ func CreateWorkersArray(configFilepath string, config Config) []Worker {
 	}
 
 	return workers
+}
+
+func CreateRegistryFromFile(registryFilePath string) map[string][]string {
+	var handles []Handle
+	file, rfErr := ioutil.ReadFile(registryFilePath)
+	if rfErr != nil {
+		log.Fatalf("Cannot read registry file (%s)", registryFilePath)
+	}
+	decoder := json.NewDecoder(bytes.NewReader(file))
+	jsonErr := decoder.Decode(&handles) // Parse json registry file
+	if jsonErr != nil {
+		log.Fatalf("Registry file Ill-formed (%s)", registryFilePath)
+	}
+	registry := make(map[string][]string)
+	for _, handle := range handles {
+		registry[handle.Handle] = handle.Pkgs
+	}
+	return registry
 }

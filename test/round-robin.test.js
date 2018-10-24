@@ -19,8 +19,8 @@ describe('round-robin balancer', () => {
     cluster.kill();
   })
 
-  it('should distribute load evenly between all workers', async () => {
-    const requests = new Array(8).fill(undefined)
+  it.only('should distribute load evenly between all workers', async () => {
+    const requests = new Array(8).fill({ name: 'foo' })
     const responses = await client.sendRequestsSequentially(requests)
     const responseTexts = responses.map(res => res.text)
 
