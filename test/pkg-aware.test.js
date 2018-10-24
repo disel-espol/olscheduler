@@ -20,7 +20,7 @@ describe('pkg-aware balancer', () => {
   })
 
   it('should reuse the same worker node if the package lists are the same', async () => {
-    const requests = new Array(3).fill({ pkgs: ['pkg0', 'pkg1'] })
+    const requests = new Array(3).fill({ name: 'foo' })
     const responses = await client.sendRequestsSequentially(requests)
     const responseTexts = responses.map(res => res.text)
 
@@ -33,8 +33,8 @@ describe('pkg-aware balancer', () => {
 
   it('if the hashes of the packages lists are different, the requests should go to different nodes', async () => {
     // assume these 2 lists compute different hashes on olscheduler
-    const requestFor1stNode = { pkgs: ['pkg0', 'pkg1'] }
-    const requestFor2stNode = { pkgs: ['pkg7', 'pkg8'] }
+    const requestFor1stNode = { name: 'foo' }
+    const requestFor2stNode = { name: 'bar' }
     const requests = [
       requestFor1stNode, 
       requestFor1stNode, 

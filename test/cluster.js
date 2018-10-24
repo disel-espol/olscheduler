@@ -11,23 +11,53 @@ const abortOnErrorHandler = err => {
     console.error('Failed to initialize test cluster: ', err)
 }
 
-
-const createOlschedulerConfig = overridenOpts => {
-  const baseConfig = {
-    host: 'localhost',
-    port: 9080,
-    ['load-threshold']: 3
-  }
-  const filePath = `/tmp/olscheduler-${overridenOpts.balancer}.json`
-  const configText = JSON.stringify({ ...baseConfig, ...overridenOpts })
+const writeJSONFile = (filePath, obj) => {
+  const configText = JSON.stringify(obj)
 
   return writeFile(filePath, configText)
     .then(() => Promise.resolve(filePath))
 }
 
+const createRegistryConfig = () => {
+  const entries = [
+    {
+      handle: 'foo',
+      pkgs: [
+        'pkg0',
+        'pkg1'
+      ]
+    },
+    {
+      handle: 'bar',
+      pkgs: [
+        'pkg7',
+        'pkg8'
+      ]
+    }
+  ]  
+  const filePath = '/tmp/olscheduler-registry.json';
+  return writeJSONFile(filePath, entries);
+}
+
+
+const createOlschedulerConfig = async overridenOpts => {
+  const baseConfig = {
+    host: 'localhost',
+    port: 9080,
+    ['load-threshold']: 3,
+    registry: await createRegistryConfig()
+  }
+  const filePath = `/tmp/olscheduler-${overridenOpts.balancer}.json`
+  return writeJSONFile(filePath, { ...baseConfig, ...overridenOpts })
+}
+
 const spawnOlschedulerProcess = async overridenOpts => {
   const configPath = await createOlschedulerConfig(overridenOpts)
   const cp = spawn(OL_BIN, ['start', '-c', configPath])
+
+  if (process.env.DEBUG) 
+    cp.stderr.on('data', data => console.log('[OLS]: ' + data.toString()));
+
   return cp
 }
 
