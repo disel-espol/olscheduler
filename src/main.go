@@ -7,131 +7,16 @@ import (
 	"os"
 
 	"./balancer"
+	"./httputil"
+	"./scheduler"
 	"./schutil"
-	"./worker"
 
 	"github.com/urfave/cli"
 )
 
 // Global variables
-var workers []*worker.Worker
+var myScheduler *scheduler.Scheduler
 var config schutil.Config
-var registry map[string][]string
-var myBalancer balancer.Balancer
-
-func logSelectedWorker(selectedWorker *worker.Worker) {
-	for i, _ := range workers {
-		log.Printf("--> worker: %s with load: %d", workers[i].GetURL(), workers[i].GetLoad())
-	}
-	log.Printf("Selected Worker with URL: %s, balancer: %s, load-threshold: %d",
-		selectedWorker.GetURL(),
-		config.Balancer,
-		config.LoadThreshold)
-}
-
-// Copied from OpenLamda src
-// getUrlComponents parses request URL into its "/" delimated components
-func getUrlComponents(r *http.Request) []string {
-	path := r.URL.Path
-
-	// trim prefix
-	if strings.HasPrefix(path, "/") {
-		path = path[1:]
-	}
-
-	// trim trailing "/"
-	if strings.HasSuffix(path, "/") {
-		path = path[:len(path)-1]
-	}
-
-	components := strings.Split(path, "/")
-	return components
-}
-
-func DoRunLambdaPlus(w http.ResponseWriter, r *http.Request) *schutil.HttpError {
-	{ // Change request's url
-		newPath := r.URL.Path
-		newPath = strings.Replace(newPath, "runLambdaPlus", "runLambda", 1)
-		r.URL.Path = newPath
-	}
-	strBody := httpreq.GetBodyAsString(r)
-	pkgs, newStrBody, err := stripPkgsArrayFromBody(strBody)
-
-	if err != nil {
-		return err
-	}
-}
-
-func respondWithError(w http.ResponseWriter, err *schutil.HttpError) {
-	log.Printf("Could not handle request: %s\n", err.Msg)
-	http.Error(w, err.Msg, err.Code)
-	return
-}
-
-func DoRunLambda(w http.ResponseWriter, r *http.Request) {
-
-	// Select worker and serve http
-	selectedWorker, err := myBalancer.SelectWorker(workers, r)
-
-	if err != nil {
-		respondWithError(w, err)
-	}
-
-	logSelectedWorker(selectedWorker)
-	selectedWorker.SendWorkload(w, r)
-}
-
-// RunLambda expects POST requests like this:
-//
-// curl -X POST localhost:9080/runLambdaPlus/<lambda-name> -d '{"pkgs": ["pkg0", "pkg1"], "param0": "value0"}'
-func RunLambdaPlusHandler(w http.ResponseWriter, r *http.Request) {
-	log.Printf("Receive request to %s\n", r.URL.Path)
-
-	observer := schutil.NewObserverResponseWriter(w)
-	err := DoRunLambdaPlus(observer, r)
-	if err != nil {
-		log.Printf("Could not handle request: %s\n", err.Msg)
-		http.Error(w, err.Msg, err.Code)
-		return
-	}
-	log.Printf("Response Status: %d", observer.Status)
-}
-
-func DoRunLambda(w http.ResponseWriter, r *http.Request) {
-	var pkgs []string
-	var found bool
-	{ // Try to load from registry
-		lambdaName := ""
-		{ // Copied from OpenLamda src
-			urlParts := getUrlComponents(r)
-			if len(urlParts) < 2 {
-				return &schutil.HttpError{"Name of image to run required", http.StatusBadRequest}
-			}
-			img := urlParts[1]
-			i := strings.Index(img, "?")
-			if i >= 0 {
-				img = img[:i-1]
-			}
-			lambdaName = img
-		}
-		// fmt.Println(lambdaName)
-		pkgs, found = registry[lambdaName]
-		if !found {
-			return &schutil.HttpError{fmt.Sprintf("No pkgs found in registry: %v for lambda name: %v", config.Registry, lambdaName), http.StatusBadRequest}
-		}
-		// fmt.Println(pkgs)
-	}
-
-	{ // Select worker and serve http
-		worker, err := myBalancer.SelectWorker(workers, r)
-		if err != nil {
-			respondWithError(w, err)
-		}
-
-		logSelectedWorker(worker)
-		worker.SendWorkload(w, r)
-	}
-}
 
 // RunLambda expects POST requests like this:
 //
@@ -139,28 +24,26 @@ func DoRunLambda(w http.ResponseWriter, r *http.Request) {
 func RunLambdaHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Receive request to %s\n", r.URL.Path)
 
-	observer := schutil.NewObserverResponseWriter(w)
-	DoRunLambda(observer, r)
+	observer := httputil.NewObserverResponseWriter(w)
+	myScheduler.RunLambda(observer, r)
 
 	log.Printf("Response Status: %d", observer.Status)
 }
 
 func StatusHandler(w http.ResponseWriter, r *http.Request) {
-	appendResponseWriter := schutil.NewAppendResponseWriter()
-	for i, _ := range workers {
-		workers[i].SendWorkload(appendResponseWriter, r)
-	}
+	appendResponseWriter := httputil.NewAppendResponseWriter()
+	myScheduler.SendToAllWorkers(appendResponseWriter, r)
 	fmt.Fprint(w, string(appendResponseWriter.Body))
 }
 
 func StartServer(ctx *cli.Context) {
 	configFilepath := ctx.String("config")
 	config = schutil.LoadConfigFromFile(configFilepath)
-	myBalancer = balancer.CreateBalancerFromConfig(config)
-	workers = schutil.CreateWorkersArray(configFilepath, config)
-	registry = schutil.CreateRegistryFromFile(config.Registry)
+	myBalancer := balancer.CreateBalancerFromConfig(config)
+	workers := schutil.CreateWorkersArray(configFilepath, config)
+	registry := schutil.CreateRegistryFromFile(config.Registry)
+	myScheduler = scheduler.NewScheduler(registry, myBalancer, workers)
 
-	http.HandleFunc("/runLambdaPlus/", RunLambdaPlusHandler)
 	http.HandleFunc("/runLambda/", RunLambdaHandler)
 	http.HandleFunc("/status", StatusHandler)
 	log.Print("Scheduler is running")

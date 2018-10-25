@@ -7,8 +7,8 @@ import (
 	"regexp"
 	"strings"
 
-	"../httpreq"
-	"../schutil"
+	"../httputil"
+	"../lambda"
 	"../worker"
 )
 
@@ -16,25 +16,25 @@ type PkgAwareBalancer struct {
 	loadThreshold int
 }
 
-func stripPkgsArrayFromBody(strBody string) ([]string, string, *schutil.HttpError) {
+func stripPkgsArrayFromBody(strBody string) ([]string, string, *httputil.HttpError) {
 	pkgsRegExp := regexp.MustCompile(`"pkgs"\s*:\s*\[.*\],*\s*`)
 	matches := pkgsRegExp.FindStringSubmatch(strBody)
 	if len(matches) < 1 {
-		return nil, "", schutil.New400Error("Pkgs array required")
+		return nil, "", httputil.New400Error("Pkgs array required")
 	}
 
 	strPkgsJson := matches[0]
 	pkgsArrayRegExp := regexp.MustCompile(`\[.*\]`)
 	srtPkgsMatches := pkgsArrayRegExp.FindStringSubmatch(strPkgsJson)
 	if len(srtPkgsMatches) < 1 {
-		return nil, "", schutil.New400Error("Pkgs array ill-formed")
+		return nil, "", httputil.New400Error("Pkgs array ill-formed")
 	}
 
 	decoder := json.NewDecoder(strings.NewReader(srtPkgsMatches[0]))
 	var pkgs []string // pkgs ordered from larger to smaller
 	err := decoder.Decode(&pkgs)
 	if err != nil {
-		return nil, "", schutil.New400Error("Malformed JSON string")
+		return nil, "", httputil.New400Error("Malformed JSON string")
 	}
 
 	newStrBody := strings.Replace(strBody, strPkgsJson, "", -1)
@@ -56,13 +56,13 @@ func h2(s string) uint32 {
 
 func selectWorkerPkgAware(workers []*worker.Worker,
 	pkgs []string,
-	threshold int) (*worker.Worker, *schutil.HttpError) {
+	threshold int) (*worker.Worker, *httputil.HttpError) {
 	if len(workers) == 0 {
-		return nil, schutil.New500Error("Can't select worker, Workers empty")
+		return nil, httputil.New500Error("Can't select worker, Workers empty")
 	}
 
 	if len(pkgs) == 0 {
-		return nil, schutil.New500Error("Can't select worker, No largest package, pkgs empty")
+		return nil, httputil.New500Error("Can't select worker, No largest package, pkgs empty")
 	}
 
 	largestPkg := pkgs[0]
@@ -86,14 +86,6 @@ func selectWorkerPkgAware(workers []*worker.Worker,
 	return workers[targetIndex], nil
 }
 
-func (b *PkgAwareBalancer) SelectWorker(workers []*worker.Worker, r *http.Request) (*worker.Worker, *schutil.HttpError) {
-	strBody := httpreq.GetBodyAsString(r)
-
-	pkgs, newStrBody, err := stripPkgsArrayFromBody(strBody)
-	if err != nil {
-		return nil, err
-	}
-	httpreq.ReplaceBodyWithString(r, newStrBody)
-
-	return selectWorkerPkgAware(workers, pkgs, b.loadThreshold)
+func (b *PkgAwareBalancer) SelectWorker(workers []*worker.Worker, r *http.Request, l *lambda.Lambda) (*worker.Worker, *httputil.HttpError) {
+	return selectWorkerPkgAware(workers, l.Pkgs, b.loadThreshold)
 }

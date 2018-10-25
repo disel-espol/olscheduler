@@ -4,7 +4,8 @@ import (
 	"math/rand"
 	"net/http"
 
-	"../schutil"
+	"../httputil"
+	"../lambda"
 	"../worker"
 )
 
@@ -13,14 +14,14 @@ import (
 type RandomBalancer struct {
 }
 
-func (b *RandomBalancer) SelectWorker(workers []*worker.Worker, r *http.Request) (*worker.Worker, *schutil.HttpError) {
+func (b *RandomBalancer) SelectWorker(workers []*worker.Worker, r *http.Request, l *lambda.Lambda) (*worker.Worker, *httputil.HttpError) {
 	if len(workers) == 0 {
-		return nil, schutil.New500Error("Can't select worker, Workers empty")
+		return nil, httputil.New500Error("Can't select worker, Workers empty")
 	}
 	totalWeight := 0
 	for i, _ := range workers {
 		if workers[i].GetWeight() < 0 {
-			return nil, schutil.New500Error("Worker's Weight cannot be negative")
+			return nil, httputil.New500Error("Worker's Weight cannot be negative")
 		}
 		totalWeight += workers[i].GetWeight()
 	}
@@ -40,7 +41,7 @@ func (b *RandomBalancer) SelectWorker(workers []*worker.Worker, r *http.Request)
 	}
 
 	if targetIndex < 0 {
-		return nil, schutil.New500Error("Can't select worker, All weights are zero")
+		return nil, httputil.New500Error("Can't select worker, All weights are zero")
 	}
 
 	return workers[targetIndex], nil
