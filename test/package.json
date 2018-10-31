@@ -5,7 +5,7 @@
   "license": "MIT",
   "private": true,
   "devDependencies": {
-    "jest": "^23.3.0",
+    "jest": "23.6.0",
     "superagent": "^3.8.3"
   },
   "scripts": {
