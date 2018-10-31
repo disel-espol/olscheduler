@@ -47,7 +47,8 @@ const createOlschedulerConfig = async overridenOpts => {
     ['load-threshold']: 3,
     registry: await createRegistryConfig()
   }
-  const filePath = `/tmp/olscheduler-${overridenOpts.balancer}.json`
+  const name = overridenOpts.name || overridenOpts.balancer
+  const filePath = `/tmp/olscheduler-${name}.json`
   return writeJSONFile(filePath, { ...baseConfig, ...overridenOpts })
 }
 
@@ -56,7 +57,7 @@ const spawnOlschedulerProcess = async overridenOpts => {
   const cp = spawn(OL_BIN, ['start', '-c', configPath])
   if (process.env.DEBUG) 
     cp.stderr.on('data', data => console.log('[OLS]: ' + data.toString()));
-  return cp
+  return { cp, configPath }
 }
 
 const spawnWorkerProcess = workerPort => {
@@ -79,16 +80,27 @@ const spawnCluster = async opts => {
   const workerProcesses = opts.workers.map(workerPort => spawnWorkerProcess(workerPort))
 
   const overridenOpts = createOlschedulerOverridenOpts(opts)
-  const olProcess = await spawnOlschedulerProcess(overridenOpts)
+  const { 
+    cp: olProcess, 
+    configPath 
+  } = await spawnOlschedulerProcess(overridenOpts)
 
   await wait(1)
 
   return {
+    configPath,
     kill: () => {
       olProcess.kill()
       workerProcesses.forEach(w => w.kill())
+    },
+    addWorkers: newWorkers => {
+      workerProcesses.push.apply(workerProcesses, newWorkers)
     }
   }
 }
 
-module.exports = { spawnCluster }
+module.exports = { 
+  spawnCluster, 
+  spawnWorkerProcess,
+  wait
+}

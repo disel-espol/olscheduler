@@ -73,5 +73,4 @@ func New400Error(msg string) *HttpError {
 func RespondWithError(w http.ResponseWriter, err *HttpError) {
 	log.Printf("Could not handle request: %s\n", err.Msg)
 	http.Error(w, err.Msg, err.Code)
-	return
 }

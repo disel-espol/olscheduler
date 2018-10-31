@@ -29,4 +29,13 @@ const requestHandler =
         }, delay * 1000);
 
 const server = http.createServer(requestHandler);
+
+const shutdown = () => {
+  server.close();
+  process.exit(0);
+}
+
+process.on('SIGTERM', shutdown)
+process.on('SIGINT', shutdown)
+
 server.listen(port, "localhost");

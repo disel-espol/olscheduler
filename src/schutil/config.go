@@ -44,6 +44,28 @@ func LoadConfigFromFile(configFilepath string) Config {
 	return config
 }
 
+func AddWorkerToArray(workers []*worker.Worker, workerUrl string, weight int) []*worker.Worker {
+	u, _ := url.Parse("http://" + workerUrl)
+	proxy := worker.NewHTTPReverseProxy(u)
+	workerConfig := worker.WorkerConfig{u, weight}
+	return append(workers, worker.NewWorker(workerConfig, proxy))
+}
+
+func FindWorkerInArray(workers []*worker.Worker, workerUrl string) int {
+	for i := 0; i < len(workers); i++ {
+		if workers[i].GetURL() == workerUrl {
+			return i
+		}
+	}
+	return -1
+}
+
+func RemoveWorkerFromArray(workers []*worker.Worker, target int) []*worker.Worker {
+	// order matters. It could be faster if order doesn't matter
+	// https://stackoverflow.com/a/37335777/5207721
+	return append(workers[:target], workers[target+1:]...)
+}
+
 func CreateWorkersArray(configFilepath string, config Config) []*worker.Worker {
 	var workers []*worker.Worker
 	for i := 0; i < len(config.Workers); i = i + 2 {
@@ -52,10 +74,7 @@ func CreateWorkersArray(configFilepath string, config Config) []*worker.Worker {
 		if err != nil || weight < 0 {
 			log.Fatalf("Config file Ill-formed (%s), every worker weight must be a positive number", configFilepath)
 		}
-		u, _ := url.Parse("http://" + config.Workers[i])
-		proxy := worker.NewHTTPReverseProxy(u)
-		workerConfig := worker.WorkerConfig{u, weight}
-		workers = append(workers, worker.NewWorker(workerConfig, proxy))
+		workers = AddWorkerToArray(workers, config.Workers[i], weight)
 	}
 
 	return workers
