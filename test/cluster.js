@@ -54,10 +54,8 @@ const createOlschedulerConfig = async overridenOpts => {
 const spawnOlschedulerProcess = async overridenOpts => {
   const configPath = await createOlschedulerConfig(overridenOpts)
   const cp = spawn(OL_BIN, ['start', '-c', configPath])
-
   if (process.env.DEBUG) 
     cp.stderr.on('data', data => console.log('[OLS]: ' + data.toString()));
-
   return cp
 }
 

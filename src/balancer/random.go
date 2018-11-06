@@ -1,34 +1,39 @@
 package balancer
 
 import (
-	"../schutil"
-	"errors"
 	"math/rand"
+	"net/http"
+
+	"../httputil"
+	"../lambda"
+	"../worker"
 )
 
 // Select a random worker
-// rand.Seed(time.Now().Unix()) has already been called
-func SelectWorkerRandom(workers []schutil.Worker) (*schutil.Worker, error) {
-	if len(workers) == 0 {
-		return nil, errors.New("Can't select worker, Workers empty")
-	}
+// assumes that rand.Seed(time.Now().Unix()) has already been called
+type RandomBalancer struct {
+}
 
+func (b *RandomBalancer) SelectWorker(workers []*worker.Worker, r *http.Request, l *lambda.Lambda) (*worker.Worker, *httputil.HttpError) {
+	if len(workers) == 0 {
+		return nil, httputil.New500Error("Can't select worker, Workers empty")
+	}
 	totalWeight := 0
 	for i, _ := range workers {
-		if workers[i].Weight < 0 {
-			panic("Worker's Weight cannot be negative")
+		if workers[i].GetWeight() < 0 {
+			return nil, httputil.New500Error("Worker's Weight cannot be negative")
 		}
-		totalWeight += workers[i].Weight
+		totalWeight += workers[i].GetWeight()
 	}
 
 	targetAccumWeight := rand.Intn(totalWeight) + 1
 	accumWeight := 0
 	targetIndex := -1
 	for i, _ := range workers {
-		if workers[i].Weight == 0 {
+		if workers[i].GetWeight() == 0 {
 			continue
 		}
-		accumWeight += workers[i].Weight
+		accumWeight += workers[i].GetWeight()
 		if accumWeight >= targetAccumWeight {
 			targetIndex = i
 			break
@@ -36,8 +41,8 @@ func SelectWorkerRandom(workers []schutil.Worker) (*schutil.Worker, error) {
 	}
 
 	if targetIndex < 0 {
-		return nil, errors.New("Can't select worker, All weights are zero")
+		return nil, httputil.New500Error("Can't select worker, All weights are zero")
 	}
 
-	return &workers[targetIndex], nil
+	return workers[targetIndex], nil
 }

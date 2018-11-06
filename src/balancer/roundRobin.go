@@ -1,23 +1,28 @@
 package balancer
 
 import (
-	"../schutil"
-	"errors"
+	"net/http"
+
+	"../httputil"
+	"../lambda"
+	"../worker"
 )
 
-var nextIndex = 0
+type RoundRobinBalancer struct {
+	nextIndex int
+}
 
-func SelectWorkerRoundRobin(workers []schutil.Worker) (*schutil.Worker, error) {
+func (b *RoundRobinBalancer) SelectWorker(workers []*worker.Worker, r *http.Request, l *lambda.Lambda) (*worker.Worker, *httputil.HttpError) {
 	if len(workers) == 0 {
-		return nil, errors.New("Can't select worker, Workers empty")
+		return nil, httputil.New500Error("Can't select worker, Workers empty")
 	}
 
-	currentIndex := nextIndex
+	currentIndex := b.nextIndex
 
-	nextIndex++
-	if nextIndex >= len(workers) {
-		nextIndex = 0
+	b.nextIndex++
+	if b.nextIndex >= len(workers) {
+		b.nextIndex = 0
 	}
 
-	return &workers[currentIndex], nil
+	return workers[currentIndex], nil
 }

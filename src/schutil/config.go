@@ -5,9 +5,10 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"log"
-	"net/http/httputil"
 	"net/url"
 	"strconv"
+
+	"../worker"
 )
 
 type Config struct {
@@ -43,8 +44,8 @@ func LoadConfigFromFile(configFilepath string) Config {
 	return config
 }
 
-func CreateWorkersArray(configFilepath string, config Config) []Worker {
-	var workers []Worker
+func CreateWorkersArray(configFilepath string, config Config) []*worker.Worker {
+	var workers []*worker.Worker
 	for i := 0; i < len(config.Workers); i = i + 2 {
 		// Make Workers with their Reverse Proxy Handlers
 		weight, err := strconv.Atoi(config.Workers[i+1])
@@ -52,8 +53,9 @@ func CreateWorkersArray(configFilepath string, config Config) []Worker {
 			log.Fatalf("Config file Ill-formed (%s), every worker weight must be a positive number", configFilepath)
 		}
 		u, _ := url.Parse("http://" + config.Workers[i])
-		handler := httputil.NewSingleHostReverseProxy(u)
-		workers = append(workers, Worker{u, handler, 0, weight})
+		proxy := worker.NewHTTPReverseProxy(u)
+		workerConfig := worker.WorkerConfig{u, weight}
+		workers = append(workers, worker.NewWorker(workerConfig, proxy))
 	}
 
 	return workers

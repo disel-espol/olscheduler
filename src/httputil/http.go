@@ -1,6 +1,7 @@
-package schutil
+package httputil
 
 import (
+	"log"
 	"net/http"
 )
 
@@ -59,4 +60,18 @@ func (this *ObserverResponseWriter) Write(body []byte) (int, error) {
 func (this *ObserverResponseWriter) WriteHeader(status int) {
 	this.Status = status
 	this.rw.WriteHeader(status)
+}
+
+func New500Error(msg string) *HttpError {
+	return &HttpError{Code: http.StatusInternalServerError, Msg: msg}
+}
+
+func New400Error(msg string) *HttpError {
+	return &HttpError{Code: http.StatusBadRequest, Msg: msg}
+}
+
+func RespondWithError(w http.ResponseWriter, err *HttpError) {
+	log.Printf("Could not handle request: %s\n", err.Msg)
+	http.Error(w, err.Msg, err.Code)
+	return
 }
