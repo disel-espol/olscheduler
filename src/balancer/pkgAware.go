@@ -2,18 +2,34 @@ package balancer
 
 import (
 	"encoding/json"
-	"hash/fnv"
 	"net/http"
 	"regexp"
 	"strings"
-
+	"github.com/lafikl/consistent"
 	"../httputil"
 	"../lambda"
 	"../worker"
+	"log"
+	"fmt"
 )
 
 type PkgAwareBalancer struct {
 	loadThreshold int
+	c *consistent.Consistent
+	m map[string]int
+}
+
+func (b *PkgAwareBalancer) init(workers []string, threshold int ){
+	b.c = consistent.New();
+	b.loadThreshold = threshold;
+	b.m = make(map[string]int);
+	for i:=0; i<len(workers); i = i +2 {
+		host:= "http://" + workers[i];
+		b.m[host] = i/2;
+		b.c.Add(host);
+		fmt.Println(host);
+	}
+
 }
 
 func stripPkgsArrayFromBody(strBody string) ([]string, string, *httputil.HttpError) {
@@ -42,19 +58,7 @@ func stripPkgsArrayFromBody(strBody string) ([]string, string, *httputil.HttpErr
 	return pkgs, newStrBody, nil
 }
 
-func h1(s string) uint32 {
-	hf := fnv.New32()
-	hf.Write([]byte(s))
-	return hf.Sum32()
-}
-
-func h2(s string) uint32 {
-	hf := fnv.New32a()
-	hf.Write([]byte(s))
-	return hf.Sum32()
-}
-
-func selectWorkerPkgAware(workers []*worker.Worker,
+func (b *PkgAwareBalancer) selectWorkerPkgAware(workers []*worker.Worker,
 	pkgs []string,
 	threshold int) (*worker.Worker, *httputil.HttpError) {
 	if len(workers) == 0 {
@@ -66,19 +70,17 @@ func selectWorkerPkgAware(workers []*worker.Worker,
 	}
 
 	largestPkg := pkgs[0]
-	targetIndex1 := h1(largestPkg) % uint32(len(workers))
-	targetIndex2 := h2(largestPkg) % uint32(len(workers))
-
-	targetIndex := targetIndex2
-	if workers[targetIndex1].GetLoad() < workers[targetIndex2].GetLoad() {
-		targetIndex = targetIndex1
+	host ,err :=b.c.Get(largestPkg);
+	if err != nil {
+		log.Fatal(err);
 	}
+	targetIndex := b.m[host];
 
 	if workers[targetIndex].GetLoad() >= threshold { // Find least loaded
 		targetIndex = 0
 		for i := 1; i < len(workers); i++ {
 			if workers[i].GetLoad() < workers[targetIndex].GetLoad() {
-				targetIndex = uint32(i)
+				targetIndex = i
 			}
 		}
 	}
@@ -87,5 +89,5 @@ func selectWorkerPkgAware(workers []*worker.Worker,
 }
 
 func (b *PkgAwareBalancer) SelectWorker(workers []*worker.Worker, r *http.Request, l *lambda.Lambda) (*worker.Worker, *httputil.HttpError) {
-	return selectWorkerPkgAware(workers, l.Pkgs, b.loadThreshold)
+	return b.selectWorkerPkgAware(workers, l.Pkgs, b.loadThreshold)
 }

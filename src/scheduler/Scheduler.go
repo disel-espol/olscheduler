@@ -60,6 +60,9 @@ func (s *Scheduler) RunLambda(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		httputil.RespondWithError(w, err)
 	}
-
+	fmt.Println(worker.GetLoad())
 	worker.SendWorkload(w, r)
+	if c, ok := s.myBalancer.(balancer.BalancerReleaser); ok {
+		c.ReleaseWorker(worker.GetURL())
+	}
 }
