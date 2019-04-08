@@ -23,13 +23,13 @@ jobs:
       # specify any bash command here prefixed with `run: `
       - run:
           name: install deps
-          command: chmod u+x ./deps.sh && ./deps.sh
+          command: bash ./deps.sh
       - run:
           name: build
-          command: chmod u+x ./build.sh && ./build.sh
+          command: bash ./build.sh
       - run:
           name: gofmt
-          command: diff -u <(echo -n) <(gofmt -d ./src)
+          command: diff -u <(echo -n) <(gofmt -d .)
       - run:
           name: install node 
           command: |

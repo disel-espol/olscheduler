@@ -15,4 +15,3 @@ type Balancer interface {
 type BalancerReleaser interface {
 	ReleaseWorker(host string)
 }
-
