@@ -4,7 +4,7 @@ import (
 	"os"
 
 	"./client"
-	"./schutil"
+	"./config"
 	"./server"
 
 	"github.com/urfave/cli"
@@ -30,8 +30,8 @@ func createCliApp() *cli.App {
 			Flags:       []cli.Flag{configFlag},
 			Action: func(c *cli.Context) error {
 				configFilepath := c.String("config")
-				config := schutil.LoadConfigFromFile(configFilepath)
-				return server.Start(configFilepath, config)
+				config := config.LoadConfigFromFile(configFilepath)
+				return server.Start(config.ToConfig())
 			},
 		},
 		cli.Command{
@@ -45,8 +45,8 @@ func createCliApp() *cli.App {
 					Flags:     []cli.Flag{configFlag},
 					Action: func(c *cli.Context) error {
 						configFilepath := c.String("config")
-						config := schutil.LoadConfigFromFile(configFilepath)
-						return client.AddWorkers(config, c.Args())
+						config := config.LoadConfigFromFile(configFilepath)
+						return client.AddWorkers(config.Port, c.Args())
 					},
 				},
 				{
@@ -56,8 +56,8 @@ func createCliApp() *cli.App {
 					Flags:     []cli.Flag{configFlag},
 					Action: func(c *cli.Context) error {
 						configFilepath := c.String("config")
-						config := schutil.LoadConfigFromFile(configFilepath)
-						return client.RemoveWorkers(config, c.Args())
+						config := config.LoadConfigFromFile(configFilepath)
+						return client.RemoveWorkers(config.Port, c.Args())
 					},
 				},
 			},

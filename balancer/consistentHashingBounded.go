@@ -1,12 +1,14 @@
 package balancer
 
 import (
-	"net/http"
 	"fmt"
 	"log"
+	"net/http"
+
 	"../httputil"
 	"../lambda"
 	"../worker"
+
 	"github.com/lafikl/consistent"
 )
 
@@ -15,17 +17,16 @@ type ConsistentHashingBounded struct {
 	m map[string]int
 }
 
-func (b *ConsistentHashingBounded) init(workers []string){
-	b.c=consistent.New()
-	b.m=make(map[string]int)
-	for i:=0; i < len(workers); i = i+ 2 {
-		host:= "http://" + workers[i]
-		b.m[host] = i/2
+func (b *ConsistentHashingBounded) Init(workers []string) {
+	b.c = consistent.New()
+	b.m = make(map[string]int)
+	for i := 0; i < len(workers); i = i + 2 {
+		host := "http://" + workers[i]
+		b.m[host] = i / 2
 		b.c.Add(host)
 		fmt.Println(host)
 	}
 }
-
 
 func (b *ConsistentHashingBounded) SelectWorker(workers []*worker.Worker, r *http.Request, l *lambda.Lambda) (*worker.Worker, *httputil.HttpError) {
 	if len(workers) == 0 {
@@ -40,7 +41,6 @@ func (b *ConsistentHashingBounded) SelectWorker(workers []*worker.Worker, r *htt
 	return workers[b.m[host]], nil
 }
 
-func (b *ConsistentHashingBounded) ReleaseWorker(host string){
+func (b *ConsistentHashingBounded) ReleaseWorker(host string) {
 	b.c.Done(host)
 }
-

@@ -5,14 +5,13 @@ import (
 	"log"
 	"net/http"
 
-	"../balancer"
+	"../config"
 	"../httputil"
 	"../scheduler"
-	"../schutil"
 )
 
 var myScheduler *scheduler.Scheduler
-var config schutil.Config
+var myConfig config.Config
 
 // RunLambda expects POST requests like this:
 //
@@ -62,16 +61,20 @@ func removeWorkerHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func Start(configFilepath string, config schutil.Config) error {
-	myBalancer := balancer.CreateBalancerFromConfig(config)
-	workers := schutil.CreateWorkersArray(configFilepath, config)
-	registry := schutil.CreateRegistryFromFile(config.Registry)
-	myScheduler = scheduler.NewScheduler(registry, myBalancer, workers)
+func Start(c config.Config) error {
+	myConfig = c
+	myScheduler = scheduler.NewScheduler(
+		myConfig.Registry,
+		myConfig.Balancer,
+		myConfig.Workers,
+	)
 
 	http.HandleFunc("/runLambda/", runLambdaHandler)
 	http.HandleFunc("/status", statusHandler)
 	http.HandleFunc("/admin/workers/add", addWorkerHandler)
 	http.HandleFunc("/admin/workers/remove", removeWorkerHandler)
+
 	log.Print("Scheduler is running")
-	return http.ListenAndServe(fmt.Sprintf("%s:%d", config.Host, config.Port), nil)
+	url := fmt.Sprintf("%s:%d", myConfig.Host, myConfig.Port)
+	return http.ListenAndServe(url, nil)
 }

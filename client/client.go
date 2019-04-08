@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-
-	"../schutil"
 )
 
 type httpReq struct {
@@ -35,10 +33,10 @@ func encodeWorkerUrls(urls []string) string {
 	return v.Encode()
 }
 
-func AddWorkers(config schutil.Config, workerUrls []string) error {
+func AddWorkers(port int, workerUrls []string) error {
 	req := httpReq{
 		query: encodeWorkerUrls(workerUrls),
-		port:  config.Port,
+		port:  port,
 		path:  "/admin/workers/add",
 	}
 
@@ -55,10 +53,10 @@ func AddWorkers(config schutil.Config, workerUrls []string) error {
 	return nil
 }
 
-func RemoveWorkers(config schutil.Config, workerUrls []string) error {
+func RemoveWorkers(port int, workerUrls []string) error {
 	req := httpReq{
 		query: encodeWorkerUrls(workerUrls),
-		port:  config.Port,
+		port:  port,
 		path:  "/admin/workers/remove",
 	}
 

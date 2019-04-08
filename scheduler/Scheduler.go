@@ -7,7 +7,6 @@ import (
 	"../balancer"
 	"../httputil"
 	"../lambda"
-	"../schutil"
 	"../worker"
 )
 
@@ -80,7 +79,7 @@ func (s *Scheduler) RunLambda(w http.ResponseWriter, r *http.Request) {
 
 func (s *Scheduler) AddWorkers(urls []string) {
 	for _, workerUrl := range urls {
-		s.workers = schutil.AddWorkerToArray(s.workers, workerUrl, 1)
+		s.workers = worker.AddWorkerToArray(s.workers, workerUrl, 1)
 	}
 }
 
@@ -91,10 +90,10 @@ func (s *Scheduler) GetTotalWorkers() int {
 func (s *Scheduler) RemoveWorkers(urls []string) string {
 	errMsg := ""
 	for _, workerUrl := range urls {
-		target := schutil.FindWorkerInArray(s.workers, "http://"+workerUrl)
+		target := worker.FindWorkerInArray(s.workers, "http://"+workerUrl)
 
 		if target > -1 {
-			s.workers = schutil.RemoveWorkerFromArray(s.workers, target)
+			s.workers = worker.RemoveWorkerFromArray(s.workers, target)
 		} else {
 			errMsg += fmt.Sprintf("Unable to find worker with url: %s\n", workerUrl)
 		}
