@@ -4,7 +4,7 @@ import (
 	"math/rand"
 	"time"
 
-	"../balancer"
+	"github.com/disel-espol/olscheduler/balancer"
 )
 
 func createBalancerFromConfig(c JSONConfig) balancer.Balancer {

@@ -20,7 +20,7 @@ describe('pkg-aware balancer', () => {
   })
 
   it('should reuse the same worker node if the package lists are the same', async () => {
-    const requests = new Array(3).fill({ name: 'foo' })
+    const requests = new Array(3).fill({ name: 'bar' })
     const responses = await client.sendRequestsSequentially(requests)
     const responseTexts = responses.map(res => res.text)
 
@@ -46,11 +46,11 @@ describe('pkg-aware balancer', () => {
     const responseTexts = responses.map(res => res.text)
 
     expect(responseTexts).toEqual([
-      "Request handled by worker at 9022",
-      "Request handled by worker at 9022",
+      "Request handled by worker at 9021",
       "Request handled by worker at 9021",
       "Request handled by worker at 9022",
-      "Request handled by worker at 9021"
+      "Request handled by worker at 9021",
+      "Request handled by worker at 9022"
     ]);
   });
 });

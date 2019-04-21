@@ -3,9 +3,9 @@ package balancer
 import (
 	"net/http"
 
-	"../httputil"
-	"../lambda"
-	"../worker"
+	"github.com/disel-espol/olscheduler/httputil"
+	"github.com/disel-espol/olscheduler/lambda"
+	"github.com/disel-espol/olscheduler/worker"
 )
 
 type LeastLoadedBalancer struct {

@@ -45,7 +45,7 @@ describe('Admin CLI', () => {
 
   it('can add and remove workers', async () => {
     // exec admin operations
-    const workers = [9033, 9034].map(port => spawnWorkerProcess(port))
+    const workers = [9033, 9034].map(port => spawnWorkerProcess('0', port))
     await wait(1)
     cluster.addWorkers(workers);
 

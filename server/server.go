@@ -5,9 +5,9 @@ import (
 	"log"
 	"net/http"
 
-	"../config"
-	"../httputil"
-	"../scheduler"
+	"github.com/disel-espol/olscheduler/config"
+	"github.com/disel-espol/olscheduler/httputil"
+	"github.com/disel-espol/olscheduler/scheduler"
 )
 
 var myScheduler *scheduler.Scheduler
@@ -63,18 +63,15 @@ func removeWorkerHandler(w http.ResponseWriter, r *http.Request) {
 
 func Start(c config.Config) error {
 	myConfig = c
-	myScheduler = scheduler.NewScheduler(
-		myConfig.Registry,
-		myConfig.Balancer,
-		myConfig.Workers,
-	)
+	myScheduler = scheduler.NewScheduler(c)
 
 	http.HandleFunc("/runLambda/", runLambdaHandler)
 	http.HandleFunc("/status", statusHandler)
 	http.HandleFunc("/admin/workers/add", addWorkerHandler)
 	http.HandleFunc("/admin/workers/remove", removeWorkerHandler)
 
-	log.Print("Scheduler is running")
+	go myScheduler.ManagePool()
+
 	url := fmt.Sprintf("%s:%d", myConfig.Host, myConfig.Port)
 	return http.ListenAndServe(url, nil)
 }

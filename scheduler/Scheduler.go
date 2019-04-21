@@ -4,10 +4,11 @@ import (
 	"fmt"
 	"net/http"
 
-	"../balancer"
-	"../httputil"
-	"../lambda"
-	"../worker"
+	"github.com/disel-espol/olscheduler/balancer"
+	"github.com/disel-espol/olscheduler/config"
+	"github.com/disel-espol/olscheduler/httputil"
+	"github.com/disel-espol/olscheduler/lambda"
+	"github.com/disel-espol/olscheduler/worker"
 )
 
 // Scheduler is an object that can schedule lambda function workloads to a pool
@@ -15,14 +16,8 @@ import (
 type Scheduler struct {
 	registry   map[string][]string
 	myBalancer balancer.Balancer
-	workers    []*worker.Worker
-}
-
-// NewScheduler is a public constructor for Scheduler
-func NewScheduler(registry map[string][]string,
-	myBalancer balancer.Balancer,
-	workers []*worker.Worker) *Scheduler {
-	return &Scheduler{registry, myBalancer, workers}
+	proxy      worker.ReverseProxy
+	pool       worker.WorkerPool
 }
 
 func (s *Scheduler) GetLambdaInfoFromRequest(r *http.Request) (*lambda.Lambda,
@@ -47,9 +42,20 @@ func (s *Scheduler) GetLambdaInfoFromRequest(r *http.Request) (*lambda.Lambda,
 }
 
 func (s *Scheduler) SendToAllWorkers(w http.ResponseWriter, r *http.Request) {
-	for i, _ := range s.workers {
-		s.workers[i].SendWorkload(w, r)
+	workers := s.pool.GetWorkers()
+	for i, _ := range workers {
+		go s.sendWorkload(workers[i], w, r)
 	}
+}
+
+func (s *Scheduler) sendWorkload(
+	selectedWorker *worker.Worker,
+	w http.ResponseWriter,
+	r *http.Request) {
+
+	s.pool.UpdateWorkerLoad(selectedWorker, true)
+	s.proxy.ProxyRequest(selectedWorker, w, r)
+	s.pool.UpdateWorkerLoad(selectedWorker, false)
 }
 
 // RunLambda is an HTTP request handler that expects requests of form
@@ -66,37 +72,52 @@ func (s *Scheduler) RunLambda(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Select worker and serve http
-	worker, err := s.myBalancer.SelectWorker(s.workers, r, lambda)
+	workers := s.pool.GetWorkers()
+	selectedWorker, err := s.myBalancer.SelectWorker(workers, r, lambda)
 	if err != nil {
 		httputil.RespondWithError(w, err)
 	}
-	fmt.Println(worker.GetLoad())
-	worker.SendWorkload(w, r)
+	s.sendWorkload(selectedWorker, w, r)
+
 	if c, ok := s.myBalancer.(balancer.BalancerReleaser); ok {
-		c.ReleaseWorker(worker.GetURL())
+		c.ReleaseWorker(selectedWorker.GetURL())
 	}
 }
 
 func (s *Scheduler) AddWorkers(urls []string) {
 	for _, workerUrl := range urls {
-		s.workers = worker.AddWorkerToArray(s.workers, workerUrl, 1)
+		s.pool.AddWorker(workerUrl, 1)
 	}
 }
 
 func (s *Scheduler) GetTotalWorkers() int {
-	return len(s.workers)
+	return s.pool.GetTotalWorkers()
 }
 
 func (s *Scheduler) RemoveWorkers(urls []string) string {
 	errMsg := ""
 	for _, workerUrl := range urls {
-		target := worker.FindWorkerInArray(s.workers, "http://"+workerUrl)
+		target := s.pool.FindWorker("http://" + workerUrl)
 
 		if target > -1 {
-			s.workers = worker.RemoveWorkerFromArray(s.workers, target)
+			s.pool.RemoveWorkerAt(target)
 		} else {
 			errMsg += fmt.Sprintf("Unable to find worker with url: %s\n", workerUrl)
 		}
 	}
 	return errMsg
+}
+
+func (s *Scheduler) ManagePool() {
+	s.pool.ManagePool()
+}
+
+func NewScheduler(c config.Config) *Scheduler {
+	return &Scheduler{
+		c.Registry,
+		c.Balancer,
+		c.ReverseProxy,
+		worker.NewWorkerPool(c.Workers),
+	}
+
 }

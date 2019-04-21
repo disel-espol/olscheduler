@@ -4,9 +4,9 @@ import (
 	"math/rand"
 	"net/http"
 
-	"../httputil"
-	"../lambda"
-	"../worker"
+	"github.com/disel-espol/olscheduler/httputil"
+	"github.com/disel-espol/olscheduler/lambda"
+	"github.com/disel-espol/olscheduler/worker"
 )
 
 // Select a random worker

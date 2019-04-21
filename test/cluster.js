@@ -30,8 +30,8 @@ const createRegistryConfig = () => {
     {
       handle: 'bar',
       pkgs: [
-        'pkg7',
-        'pkg8'
+        'z17922!',
+        'z18922!'
       ]
     }
   ]  
@@ -60,8 +60,8 @@ const spawnOlschedulerProcess = async overridenOpts => {
   return { cp, configPath }
 }
 
-const spawnWorkerProcess = workerPort => {
-  const cp = spawn('node', [WORKER_JS, '0', workerPort])
+const spawnWorkerProcess = (delay, port) => {
+  const cp = spawn('node', [WORKER_JS, delay.toString(), port])
   return cp
 }
 
@@ -77,7 +77,8 @@ const createOlschedulerOverridenOpts = args => {
 }
 
 const spawnCluster = async opts => {
-  const workerProcesses = opts.workers.map(workerPort => spawnWorkerProcess(workerPort))
+  const workerDelay = opts.workerDelay || '0';
+  const workerProcesses = opts.workers.map(workerPort => spawnWorkerProcess(workerDelay, workerPort))
 
   const overridenOpts = createOlschedulerOverridenOpts(opts)
   const { 
