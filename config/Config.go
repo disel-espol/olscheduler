@@ -15,3 +15,15 @@ type Config struct {
 	Workers       []*worker.Worker
 	ReverseProxy  worker.ReverseProxy
 }
+
+func CreateDefaultConfig() Config {
+	return Config{
+		Host:          "localhost",
+		Port:          9080,
+		LoadThreshold: 3,
+		Balancer:      new(balancer.RoundRobinBalancer),
+		Registry:      make(map[string][]string),
+		Workers:       make([]*worker.Worker, 0),
+		ReverseProxy:  worker.NewHTTPReverseProxy(),
+	}
+}
