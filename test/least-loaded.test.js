@@ -12,11 +12,11 @@ describe('least-loaded balancer', () => {
   beforeAll(async () => {
     cluster = await spawnCluster({
       balancer: 'least-loaded',
-      port: 9020,
-      workers: [9021, 9022, 9023, 9024],
+      port: 9040,
+      workers: [9041, 9042, 9043, 9044],
       workerDelay: 1
     })    
-    client = createClient(9020)
+    client = createClient(9040)
   })
 
   afterAll(() => {
@@ -34,10 +34,10 @@ describe('least-loaded balancer', () => {
     const responseTexts = responses.map(res => res.text)
 
     expect(responseTexts).toEqual([
-      "Request handled by worker at 9021",
-      "Request handled by worker at 9022",
-      "Request handled by worker at 9023",
-      "Request handled by worker at 9024"
+      "Request handled by worker at 9041",
+      "Request handled by worker at 9042",
+      "Request handled by worker at 9043",
+      "Request handled by worker at 9044"
     ]);
   });
 });

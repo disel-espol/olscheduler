@@ -9,21 +9,20 @@ describe('HTTP endpoints for admin', () => {
     cluster = await spawnCluster({
       balancer: 'pkg-aware',
       name: 'admin',
-      port: 9030,
+      port: 9080,
       workers: []
     })    
-    client = createClient(9030)
+    client = createClient(9080)
   })
 
   afterAll(() => {
     cluster.kill();
-  })
-
+  }) 
   it('can add and remove workers', async () => {
-    const res1 = await client.addWorkers(['localhost:9031', 'localhost:9032', 'localhost:9033'])
+    const res1 = await client.addWorkers(['localhost:9081', 'localhost:9082', 'localhost:9083'])
     expect(res1.status).toBe(200)
 
-    const res2 = await client.removeWorkers(['localhost:9033'])
+    const res2 = await client.removeWorkers(['localhost:9083'])
     expect(res2.status).toBe(200)
   })
 })
@@ -33,10 +32,10 @@ describe('Admin CLI', () => {
     cluster = await spawnCluster({
       balancer: 'round-robin',
       name: 'admin',
-      port: 9030,
+      port: 9080,
       workers: []
     })    
-    client = createClient(9030)
+    client = createClient(9080)
   })
 
   afterAll(() => {
@@ -45,24 +44,24 @@ describe('Admin CLI', () => {
 
   it('can add and remove workers', async () => {
     // exec admin operations
-    const workers = [9033, 9034].map(port => spawnWorkerProcess('0', port))
+    const workers = [9083, 9084].map(port => spawnWorkerProcess('0', port))
     await wait(1)
     cluster.addWorkers(workers);
 
     await cli.addWorkers(
       cluster.configPath, 
       [
-        'localhost:9031', 
-        'localhost:9032', 
-        'localhost:9033', 
-        'localhost:9034'
+        'localhost:9081', 
+        'localhost:9082', 
+        'localhost:9083', 
+        'localhost:9084'
       ]
     )
     const { stdout } = await cli.removeWorkers(
       cluster.configPath, 
       [
-        'localhost:9031', 
-        'localhost:9032'
+        'localhost:9081', 
+        'localhost:9082'
       ]
     )
     // now run the workers
@@ -71,10 +70,10 @@ describe('Admin CLI', () => {
     const responseTexts = responses.map(res => res.text)
 
     expect(responseTexts).toEqual([
-      "Request handled by worker at 9033",
-      "Request handled by worker at 9034",
-      "Request handled by worker at 9033",
-      "Request handled by worker at 9034",
+      "Request handled by worker at 9083",
+      "Request handled by worker at 9084",
+      "Request handled by worker at 9083",
+      "Request handled by worker at 9084",
     ])
   })
 })

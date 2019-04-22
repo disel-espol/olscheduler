@@ -86,7 +86,7 @@ const spawnCluster = async opts => {
     configPath 
   } = await spawnOlschedulerProcess(overridenOpts)
 
-  await wait(1)
+  await wait(2)
 
   return {
     configPath,
