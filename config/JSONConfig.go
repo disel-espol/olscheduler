@@ -28,12 +28,11 @@ type Handle struct {
 
 func (c JSONConfig) ToConfig() Config {
 	return Config{
-		Host:          c.Host,
-		Port:          c.Port,
-		LoadThreshold: c.LoadThreshold,
-		Balancer:      createBalancerFromConfig(c),
-		Registry:      createRegistryFromFile(c.Registry),
-		ReverseProxy:  proxy.NewHTTPReverseProxy(),
+		Host:         c.Host,
+		Port:         c.Port,
+		Balancer:     createBalancerFromConfig(c),
+		Registry:     createRegistryFromFile(c.Registry),
+		ReverseProxy: proxy.NewHTTPReverseProxy(),
 	}
 }
 
