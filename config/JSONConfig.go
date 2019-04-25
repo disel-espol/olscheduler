@@ -5,10 +5,8 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"log"
-	"net/url"
-	"strconv"
 
-	"github.com/disel-espol/olscheduler/worker"
+	"github.com/disel-espol/olscheduler/proxy"
 )
 
 // JSONConfig holds the data configured via a JSON file. This shall be used
@@ -34,9 +32,8 @@ func (c JSONConfig) ToConfig() Config {
 		Port:          c.Port,
 		LoadThreshold: c.LoadThreshold,
 		Balancer:      createBalancerFromConfig(c),
-		Workers:       createWorkerSlice(c),
 		Registry:      createRegistryFromFile(c.Registry),
-		ReverseProxy:  worker.NewHTTPReverseProxy(),
+		ReverseProxy:  proxy.NewHTTPReverseProxy(),
 	}
 }
 
@@ -57,25 +54,6 @@ func LoadConfigFromFile(configFilepath string) JSONConfig {
 	}
 
 	return config
-}
-
-func createWorkerSlice(config JSONConfig) []*worker.Worker {
-	workersLength := len(config.Workers)
-	if workersLength%2 == 1 {
-		log.Fatalf("Config file Ill-formed, every worker url must be followed by its weight")
-	}
-
-	workerSlice := make([]*worker.Worker, workersLength/2)
-	for i := 0; i < workersLength; i = i + 2 {
-		weight, err := strconv.Atoi(config.Workers[i+1])
-		if err != nil || weight < 0 {
-			log.Fatalf("Config file Ill-formed, every worker weight must be a positive number")
-		}
-		workerUrl, _ := url.Parse("http://" + config.Workers[i])
-		workerSlice[i/2] = worker.NewWorker(workerUrl, weight)
-	}
-
-	return workerSlice
 }
 
 func createRegistryFromFile(registryFilePath string) map[string][]string {

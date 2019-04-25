@@ -31,7 +31,7 @@ const createRegistryConfig = () => {
       handle: 'bar',
       pkgs: [
         'z17922!',
-        'z18922!'
+        'pkg2'
       ]
     }
   ]  
@@ -69,23 +69,18 @@ const wait = seconds => new Promise((resolve, reject) => {
   setTimeout(() => resolve(), seconds * 1000)
 })
 
-const createOlschedulerOverridenOpts = args => {
-  const workers = args.workers
-    .map((port) => ['localhost:' + port, "1"])
-    .reduce((acc, array) => acc.concat(array), [])
-  return { ...args, workers }
-}
-
 const spawnCluster = async opts => {
-  const workerDelay = opts.workerDelay || '0';
-  const workerProcesses = opts.workers.map(workerPort => spawnWorkerProcess(workerDelay, workerPort))
+  const { workerDelay, ...overridenOpts } = opts;
+  const workerProcesses = opts.workers
+    .map(workerUrlString => new URL(workerUrlString).port)
+    .map(workerPort => spawnWorkerProcess(workerDelay || '0', workerPort))
 
-  const overridenOpts = createOlschedulerOverridenOpts(opts)
   const { 
     cp: olProcess, 
     configPath 
-  } = await spawnOlschedulerProcess(overridenOpts)
+  } = await spawnOlschedulerProcess(opts)
 
+  // wait 2 seconds for the server to launch
   await wait(2)
 
   return {

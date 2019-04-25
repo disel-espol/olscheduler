@@ -13,7 +13,12 @@ describe('least-loaded balancer', () => {
     cluster = await spawnCluster({
       balancer: 'least-loaded',
       port: 9040,
-      workers: [9041, 9042, 9043, 9044],
+      workers: [
+        'http://localhost:9041', 
+        'http://localhost:9042', 
+        'http://localhost:9043', 
+        'http://localhost:9044'
+      ],
       workerDelay: 1
     })    
     client = createClient(9040)

@@ -1,29 +1,19 @@
 package config
 
-import (
-	"math/rand"
-	"time"
-
-	"github.com/disel-espol/olscheduler/balancer"
-)
+import "github.com/disel-espol/olscheduler/balancer"
 
 func createBalancerFromConfig(c JSONConfig) balancer.Balancer {
 	switch c.Balancer {
 	case "least-loaded":
-		return new(balancer.LeastLoadedBalancer)
+		return balancer.NewLeastLoadedFromJSONSlice(c.Workers)
 	case "pkg-aware":
-		b := new(balancer.PkgAwareBalancer)
-		b.Init(c.Workers, c.LoadThreshold)
-		return b
+		return balancer.NewPackageAwareFromJSONSlice(c.Workers, uint(c.LoadThreshold))
 	case "random":
-		rand.Seed(time.Now().Unix()) // For rand future calls
-		return new(balancer.RandomBalancer)
+		return balancer.NewRandomFromJSONSlice(c.Workers)
 	case "round-robin":
-		return new(balancer.RoundRobinBalancer)
+		return balancer.NewRoundRobinFromJSONSlice(c.Workers)
 	case "hashing-bounded":
-		b := new(balancer.ConsistentHashingBounded)
-		b.Init(c.Workers)
-		return b
+		return balancer.NewConsistentHashingBoundedFromJSONSlice(c.Workers)
 	}
 
 	panic("Unknown balancer: " + c.Balancer)

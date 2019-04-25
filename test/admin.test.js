@@ -19,11 +19,15 @@ describe('HTTP endpoints for admin', () => {
     cluster.kill();
   }) 
   it('can add and remove workers', async () => {
-    const res1 = await client.addWorkers(['localhost:9081', 'localhost:9082', 'localhost:9083'])
-    expect(res1.status).toBe(200)
+    const res1 = await client.addWorkers([
+      'http://localhost:9081', 
+      'http://localhost:9082', 
+      'http://localhost:9083'
+    ]);
+    expect(res1.status).toBe(200);
 
-    const res2 = await client.removeWorkers(['localhost:9083'])
-    expect(res2.status).toBe(200)
+    const res2 = await client.removeWorkers(['http://localhost:9083']);
+    expect(res2.status).toBe(200);
   })
 })
 
@@ -51,17 +55,17 @@ describe('Admin CLI', () => {
     await cli.addWorkers(
       cluster.configPath, 
       [
-        'localhost:9081', 
-        'localhost:9082', 
-        'localhost:9083', 
-        'localhost:9084'
+        'http://localhost:9081', 
+        'http://localhost:9082', 
+        'http://localhost:9083', 
+        'http://localhost:9084'
       ]
     )
     const { stdout } = await cli.removeWorkers(
       cluster.configPath, 
       [
-        'localhost:9081', 
-        'localhost:9082'
+        'http://localhost:9081', 
+        'http://localhost:9082'
       ]
     )
     // now run the workers

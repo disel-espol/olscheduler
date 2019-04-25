@@ -10,7 +10,12 @@ describe('round-robin balancer', () => {
     cluster = await spawnCluster({
       balancer: 'round-robin',
       port: 9010,
-      workers: [9011, 9012, 9013, 9014]
+      workers: [
+        'http://localhost:9011', 
+        'http://localhost:9012', 
+        'http://localhost:9013', 
+        'http://localhost:9014'
+      ]
     })    
     client = createClient(9010)
   })

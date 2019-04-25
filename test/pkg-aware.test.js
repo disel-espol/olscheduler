@@ -10,7 +10,7 @@ describe('pkg-aware balancer', () => {
     cluster = await spawnCluster({
       balancer: 'pkg-aware',
       port: 9020,
-      workers: [9021, 9022]
+      workers: ['http://localhost:9021', 'http://localhost:9022']
     })    
     client = createClient(9020)
   })
