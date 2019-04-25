@@ -32,9 +32,9 @@ respectively.
   "load-threshold":3,
   "registry":"/tmp/olscheduler-registry.json",
   "balancer":"pkg-aware",
-  "workers":[
-    "localhost:9021", "1",
-    "localhost:9022" ,"1"
+  "workers": [
+     "http://localhost:9021",
+     "http://localhost:9022"
   ]
 }
 ```
@@ -72,38 +72,39 @@ olscheduler start -c /path/to/config/file
 
 This is the simplest method, provided that you are comfortable with Go. Just 
 create a `Config` struct with the desired configuration and then pass it to the 
-`server.Start()` function to start the server.
+`server.Start()` function to start the server. Here's an example that creates 
+the same scheduler as the one in the previous section:
 
 ``` Go
 package main
 
 import (
+	"net/url"
+
+	"github.com/disel-espol/olscheduler/balancer"
 	"github.com/disel-espol/olscheduler/config"
 	"github.com/disel-espol/olscheduler/server"
-	"github.com/disel-espol/olscheduler/worker"
-	"net/url"
 )
 
 func main() {
 	myConfig := config.CreateDefaultConfig()
 
 	// edit config as you wish
-	myConfig.Port = 8080
-	myConfig.LoadThreshold = 5
+	myConfig.Port = 9020
 
-  // add functions to registry
+	// add functions to registry
 	myConfig.Registry["foo"] = []string{"pkg0", "pkg1"}
 	myConfig.Registry["bar"] = []string{"pkg0", "pkg2"}
 
-  // add worker nodes
-	workerUrl1, _ := url.Parse("http://localhost:8081")
-	workerUrl2, _ := url.Parse("http://localhost:8082")
-	myConfig.Workers = []*worker.Worker{
-		worker.NewWorker(workerUrl1, 1),
-		worker.NewWorker(workerUrl2, 1),
+	// create workers and set load balancer algorithm
+	var loadThreshold uint = 3
+	workerUrls := []url.URL{
+		url.URL{Scheme: "http", Host: "localhost:8081"},
+		url.URL{Scheme: "http", Host: "localhost:8082"},
 	}
+	myConfig.Balancer = balancer.NewPackageAware(workerUrls, loadThreshold)
 
-  // launch the server
+	// launch the server
 	server.Start(myConfig)
 }
 ```
