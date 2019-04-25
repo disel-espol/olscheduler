@@ -12,7 +12,8 @@ const abortOnErrorHandler = err => {
 }
 
 const writeJSONFile = (filePath, obj) => {
-  const configText = JSON.stringify(obj)
+  // pretty print the JSON object
+  const configText = JSON.stringify(obj, null, 4)
 
   return writeFile(filePath, configText)
     .then(() => Promise.resolve(filePath))

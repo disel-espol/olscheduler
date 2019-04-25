@@ -25,18 +25,18 @@ describe('round-robin balancer', () => {
   })
 
   it('should distribute load evenly between all workers', async () => {
-    const requests = new Array(8).fill({ name: 'foo' })
-    const responses = await client.sendRequestsSequentially(requests)
-    const responseTexts = responses.map(res => res.text)
+    const requests = new Array(8).fill({ name: 'foo' });
+    const responses = await Promise.all(requests.map(req => client.sendRequest(req)));
+    const responseTexts = responses.map(res => res.text).sort()
 
     expect(responseTexts).toEqual([
       "Request handled by worker at 9011",
-      "Request handled by worker at 9012",
-      "Request handled by worker at 9013",
-      "Request handled by worker at 9014",
       "Request handled by worker at 9011",
       "Request handled by worker at 9012",
+      "Request handled by worker at 9012",
       "Request handled by worker at 9013",
+      "Request handled by worker at 9013",
+      "Request handled by worker at 9014",
       "Request handled by worker at 9014"
     ])
   })

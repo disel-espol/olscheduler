@@ -70,13 +70,13 @@ describe('Admin CLI', () => {
     )
     // now run the workers
     const requests = new Array(4).fill({ name: 'foo' })
-    const responses = await client.sendRequestsSequentially(requests)
-    const responseTexts = responses.map(res => res.text)
+    const responses = await Promise.all(requests.map(req => client.sendRequest(req)));
+    const responseTexts = responses.map(res => res.text).sort()
 
     expect(responseTexts).toEqual([
       "Request handled by worker at 9083",
-      "Request handled by worker at 9084",
       "Request handled by worker at 9083",
+      "Request handled by worker at 9084",
       "Request handled by worker at 9084",
     ])
   })

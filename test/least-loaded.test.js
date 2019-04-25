@@ -28,15 +28,15 @@ describe('least-loaded balancer', () => {
     cluster.kill();
   })
 
-  it('should use a different worker node if the package lists are the same', async () => {
+  it('4 simultaneous requests should use 4 different workers', async () => {
     const req = { name: 'bar' };
     const responses = await Promise.all([
       client.sendRequest(req),
-      waitMilis(30).then(() => client.sendRequest(req)),
-      waitMilis(60).then(() => client.sendRequest(req)),
-      waitMilis(90).then(() => client.sendRequest(req)),
+      client.sendRequest(req),
+      client.sendRequest(req),
+      client.sendRequest(req),
     ]);
-    const responseTexts = responses.map(res => res.text)
+    const responseTexts = responses.map(res => res.text).sort()
 
     expect(responseTexts).toEqual([
       "Request handled by worker at 9041",
