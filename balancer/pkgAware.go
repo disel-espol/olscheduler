@@ -1,6 +1,7 @@
 package balancer
 
 import (
+	"errors"
 	"log"
 	"net/http"
 	"net/url"
@@ -31,6 +32,30 @@ type PackageAware struct {
 	mutex         *sync.Mutex
 }
 
+func getPotentialNode(largestPkg string, b *PackageAware) (*worker.Node, error) {
+
+	salt := "salty"
+	candidate1, err1 := b.hashRing.Get(largestPkg)
+	candidate2, err2 := b.hashRing.Get(largestPkg + salt)
+	if err1 != nil && err2 != nil {
+		log.Fatal(err1, err2)
+		return nil, errors.New("error in both candidates")
+	} else if err1 != nil {
+		return b.workerNodeMap[candidate2], nil
+	} else if err2 != nil {
+		return b.workerNodeMap[candidate1], nil
+	}
+
+	host1 := b.workerNodeMap[candidate1]
+	host2 := b.workerNodeMap[candidate2]
+	if host1.Load >= host2.Load {
+		return host2, nil
+	}
+
+	return host1, nil
+
+}
+
 func (b *PackageAware) SelectWorker(r *http.Request, l *lambda.Lambda) (url.URL, *httputil.HttpError) {
 	workerNodes := b.workerNodes
 	if len(workerNodes) == 0 {
@@ -43,12 +68,10 @@ func (b *PackageAware) SelectWorker(r *http.Request, l *lambda.Lambda) (url.URL,
 	}
 
 	largestPkg := pkgs[0]
-	host, err := b.hashRing.Get(largestPkg)
+
+	selectedNode, err := getPotentialNode(largestPkg, b)
 	if err != nil {
 		log.Fatal(err)
-	}
-	selectedNode := b.workerNodeMap[host]
-	if selectedNode == nil {
 		return url.URL{}, httputil.New500Error("Failed to select worker. URL not found")
 	}
 
@@ -62,6 +85,7 @@ func (b *PackageAware) SelectWorker(r *http.Request, l *lambda.Lambda) (url.URL,
 	selectedNode.Load++
 
 	return selectedNode.GetURL(), nil
+
 }
 
 func (b *PackageAware) ReleaseWorker(workerUrl url.URL) {
